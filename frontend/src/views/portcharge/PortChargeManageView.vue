@@ -1,0 +1,206 @@
+<template>
+  <el-card>
+    <template #header>
+      <div class="card-header">
+        <span style="font-size:16px;font-weight:600">
+          <el-icon color="#67c23a"><Ship /></el-icon>
+          目的港费用管理
+        </span>
+      </div>
+    </template>
+
+    <!-- 搜索 -->
+    <el-form :inline="true" class="search-bar">
+      <el-form-item label="目的港">
+        <el-select v-model="selectedDest" placeholder="选择或输入目的港" filterable clearable
+          style="width:320px" @change="loadData" :loading="destLoading">
+          <el-option v-for="d in destinations" :key="d" :label="d" :value="d" />
+        </el-select>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" @click="loadData" :disabled="!selectedDest">查询</el-button>
+      </el-form-item>
+    </el-form>
+
+    <!-- 表格 -->
+    <el-table :data="tableData" v-loading="loading" stripe border style="margin-top:12px"
+      :header-cell-style="{ background:'#fafafa', color:'#606266', fontWeight:600 }">
+      <el-table-column prop="feeNameCn" label="中文费项" width="140">
+        <template #default="{ row }">
+          <el-input v-if="editingId === row.id" v-model="editForm.feeNameCn" size="small" />
+          <span v-else>{{ row.feeNameCn || '—' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="feeNameEn" label="英文费项" min-width="160">
+        <template #default="{ row }">
+          <el-input v-if="editingId === row.id" v-model="editForm.feeNameEn" size="small" />
+          <span v-else>{{ row.feeNameEn || '—' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="货币" width="90">
+        <template #default="{ row }">
+          <el-select v-if="editingId === row.id" v-model="editForm.currency" size="small" style="width:80px">
+            <el-option v-for="c in currencies" :key="c" :label="c" :value="c" />
+          </el-select>
+          <span v-else>{{ row.currency || '—' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="amountDirect" label="直客金额" width="120" align="right">
+        <template #default="{ row }">
+          <el-input v-if="editingId === row.id" v-model="editForm.amountDirect" size="small" style="width:100px" />
+          <span v-else>{{ row.amountDirect != null ? Number(row.amountDirect).toFixed(2) : '—' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="unitDirect" label="单位" width="80">
+        <template #default="{ row }">
+          <el-select v-if="editingId === row.id" v-model="editForm.unitDirect" size="small" style="width:70px" clearable>
+            <el-option v-for="u in units" :key="u" :label="u" :value="u" />
+          </el-select>
+          <span v-else>{{ row.unitDirect || '—' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="amountCoload" label="同行金额" width="120" align="right">
+        <template #default="{ row }">
+          <el-input v-if="editingId === row.id" v-model="editForm.amountCoload" size="small" style="width:100px" />
+          <span v-else>{{ row.amountCoload != null ? Number(row.amountCoload).toFixed(2) : '—' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="unitCoload" label="同行单位" width="80">
+        <template #default="{ row }">
+          <el-select v-if="editingId === row.id" v-model="editForm.unitCoload" size="small" style="width:70px" clearable>
+            <el-option v-for="u in units" :key="u" :label="u" :value="u" />
+          </el-select>
+          <span v-else>{{ row.unitCoload || '—' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="remarks" label="备注" min-width="120" show-overflow-tooltip>
+        <template #default="{ row }">
+          <el-input v-if="editingId === row.id" v-model="editForm.remarks" size="small" />
+          <span v-else>{{ row.remarks || '—' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="120" fixed="right">
+        <template #default="{ row }">
+          <template v-if="editingId === row.id">
+            <el-button size="small" type="primary" @click="handleSave(row)">保存</el-button>
+            <el-button size="small" @click="cancelEdit">取消</el-button>
+          </template>
+          <template v-else>
+            <el-button size="small" type="primary" link @click="startEdit(row)">编辑</el-button>
+            <el-popconfirm title="确认删除？" @confirm="handleDelete(row.id)">
+              <template #reference>
+                <el-button size="small" type="danger" link>删除</el-button>
+              </template>
+            </el-popconfirm>
+          </template>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <div v-if="!loading && selectedDest && tableData.length === 0" style="text-align:center;padding:60px 0;color:#c0c4cc">
+      <el-empty description="该目的港暂无费用数据" />
+    </div>
+  </el-card>
+</template>
+
+<script setup>
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { Ship } from '@element-plus/icons-vue'
+import { portChargeApi } from '@/api'
+
+const destinations = ref([])
+const selectedDest = ref('')
+const tableData = ref([])
+const loading = ref(false)
+const destLoading = ref(false)
+const editingId = ref(null)
+const editForm = reactive({
+  feeNameCn: '', feeNameEn: '', currency: '',
+  amountDirect: '', unitDirect: '',
+  amountCoload: '', unitCoload: '', remarks: ''
+})
+
+const currencies = ['USD', 'EUR', 'HKD', 'SGD', 'THB', 'AED', 'KRW', 'NTD', 'GBP', 'AUD', 'CAD', 'ZAR', 'BRL', 'MOP', 'TWD', 'RMB', 'JPY']
+const units = ['WM', 'BL', 'SET', 'TON', 'BLOCK', '100KG']
+
+const loadDests = async () => {
+  destLoading.value = true
+  try {
+    const res = await portChargeApi.destinations()
+    destinations.value = res.data
+  } finally { destLoading.value = false }
+}
+
+const loadData = async () => {
+  if (!selectedDest.value) return
+  loading.value = true; editingId.value = null
+  try {
+    const res = await portChargeApi.list(selectedDest.value)
+    tableData.value = res.data
+  } finally { loading.value = false }
+}
+
+const startEdit = (row) => {
+  editingId.value = row.id
+  Object.assign(editForm, {
+    feeNameCn: row.feeNameCn || '',
+    feeNameEn: row.feeNameEn || '',
+    currency: row.currency || '',
+    amountDirect: row.amountDirect != null ? String(row.amountDirect) : '',
+    unitDirect: row.unitDirect || '',
+    amountCoload: row.amountCoload != null ? String(row.amountCoload) : '',
+    unitCoload: row.unitCoload || '',
+    remarks: row.remarks || ''
+  })
+}
+
+const cancelEdit = () => { editingId.value = null }
+
+const handleSave = async (row) => {
+  const payload = {
+    id: row.id,
+    destination: row.destination,
+    feeNameCn: editForm.feeNameEn || null,
+    feeNameEn: editForm.feeNameEn || null,
+    currency: editForm.currency || null,
+    amountDirect: editForm.amountDirect ? Number(editForm.amountDirect) : null,
+    amountDirectRaw: editForm.amountDirect || null,
+    unitDirect: editForm.unitDirect || null,
+    amountCoload: editForm.amountCoload ? Number(editForm.amountCoload) : null,
+    amountColoadRaw: editForm.amountCoload || null,
+    unitCoload: editForm.unitCoload || null,
+    remarks: editForm.remarks || null
+  }
+  try {
+    await portChargeApi.update(row.id, payload)
+    ElMessage.success('保存成功')
+    editingId.value = null
+    loadData()
+  } catch (e) {
+    ElMessage.error('保存失败')
+  }
+}
+
+const handleDelete = async (id) => {
+  try {
+    await portChargeApi.delete(id)
+    ElMessage.success('删除成功')
+    loadData()
+  } catch (e) {
+    ElMessage.error('删除失败')
+  }
+}
+
+onMounted(loadDests)
+</script>
+
+<style scoped>
+.search-bar { background: #fafafa; padding: 16px 16px 0; border-radius: 6px; margin-bottom: 12px; }
+
+@media (max-width: 768px) {
+  :deep(.el-form--inline) { flex-direction: column; }
+  :deep(.el-form--inline .el-form-item) { margin-right: 0; width: 100%; }
+  :deep(.el-select), :deep(.el-input) { width: 100% !important; }
+}
+</style>

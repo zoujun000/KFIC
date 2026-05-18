@@ -169,14 +169,25 @@ public class DestPortChargeServiceImpl implements DestPortChargeService {
             );
         }
 
-        // 多个候选 → 选去掉括号后港口名相等的最匹配那个
+        // 多个候选 → 按优先级选最匹配的
+        // 优先级: 1.港口名相等 2.不含via 3.首个
         final String portCore = normalizeDest(noSpace);
         final List<String> finalCandidates = candidates;
         String best = null;
+        // 优先级1：去掉括号后港口名完全相等
         for (String d : finalCandidates) {
             if (d != null && normalizeDest(d).equals(portCore)) {
                 best = d;
                 break;
+            }
+        }
+        // 优先级2：不含 via（避免 AQABA via DUBAI 抢 DUBAI）
+        if (best == null) {
+            for (String d : finalCandidates) {
+                if (d != null && !d.toLowerCase().contains("via ")) {
+                    best = d;
+                    break;
+                }
             }
         }
         if (best == null) best = finalCandidates.get(0);

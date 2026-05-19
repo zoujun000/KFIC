@@ -34,8 +34,9 @@ public class DestPortChargeController {
     @GetMapping("/calc")
     public Result<PortChargeSummaryDTO> calc(
             @RequestParam String destination,
-            @RequestParam(defaultValue = "1") BigDecimal volume) {
-        return Result.success(chargeService.calcCharges(destination, volume));
+            @RequestParam(defaultValue = "1") BigDecimal volume,
+            @RequestParam(defaultValue = "direct") String clientType) {
+        return Result.success(chargeService.calcCharges(destination, volume, clientType));
     }
 
     @Operation(summary = "获取目的港列表")
@@ -58,7 +59,7 @@ public class DestPortChargeController {
 
     @Operation(summary = "更新单条目的港费用")
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MAINTAINER')")
     public Result<Void> update(@PathVariable Long id, @RequestBody DestPortCharge charge) {
         charge.setId(id);
         chargeService.updateCharge(charge);
@@ -67,7 +68,7 @@ public class DestPortChargeController {
 
     @Operation(summary = "删除单条目的港费用")
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MAINTAINER')")
     public Result<Void> deleteCharge(@PathVariable Long id) {
         chargeService.deleteCharge(id);
         return Result.success();

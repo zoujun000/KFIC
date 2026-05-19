@@ -166,6 +166,31 @@ public class QuoteServiceImpl implements QuoteService {
     }
 
     @Override
+    public List<FreightQuote> listByDestination(String destination) {
+        if (destination == null || destination.isBlank()) return List.of();
+        LambdaQueryWrapper<FreightQuote> w = new LambdaQueryWrapper<FreightQuote>()
+            .eq(FreightQuote::getDeleted, 0)
+            .like(FreightQuote::getDestination, destination)
+            .orderByAsc(FreightQuote::getVolumeMin)
+            .orderByAsc(FreightQuote::getVia);
+        return quoteMapper.selectList(w);
+    }
+
+    @Override
+    public void updateQuote(FreightQuote quote) {
+        if (quote.getId() == null) throw new BusinessException("ID不能为空");
+        FreightQuote exist = quoteMapper.selectById(quote.getId());
+        if (exist == null) throw new BusinessException("报价记录不存在");
+        quoteMapper.updateById(quote);
+    }
+
+    @Override
+    public void deleteQuote(Long id) {
+        if (id == null) throw new BusinessException("ID不能为空");
+        quoteMapper.deleteById(id);
+    }
+
+    @Override
     public List<QuoteUploadLog> uploadLogs() {
         return uploadLogMapper.selectList(
             new LambdaQueryWrapper<QuoteUploadLog>().orderByDesc(QuoteUploadLog::getCreateTime)

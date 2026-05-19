@@ -31,6 +31,21 @@ public interface QuoteService {
     List<String> listDestinations(String country);
 
     /**
+     * 按目的港查询报价列表（无分页，用于管理页）
+     */
+    List<FreightQuote> listByDestination(String destination);
+
+    /**
+     * 更新单条报价
+     */
+    void updateQuote(FreightQuote quote);
+
+    /**
+     * 删除单条报价（逻辑删除）
+     */
+    void deleteQuote(Long id);
+
+    /**
      * 上传历史记录
      */
     List<QuoteUploadLog> uploadLogs();

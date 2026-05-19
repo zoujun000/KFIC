@@ -31,6 +31,9 @@ export const quoteApi = {
   query: (params) => request.get('/quotes', { params }),
   countries: () => request.get('/quotes/countries'),
   destinations: (country) => request.get('/quotes/destinations', { params: { country } }),
+  byDestination: (destination) => request.get('/quotes/by-destination', { params: { destination } }),
+  update: (id, data) => request.put(`/quotes/${id}`, data),
+  delete: (id) => request.delete(`/quotes/${id}`),
   logs: () => request.get('/quotes/logs')
 }
 export const destChargeApi = {
@@ -53,7 +56,7 @@ export const portChargeApi = {
   upload: (formData) => request.post('/port-charges/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
-  calc: (destination, volume) => request.get('/port-charges/calc', { params: { destination, volume } }),
+  calc: (destination, volume, clientType) => request.get('/port-charges/calc', { params: { destination, volume, clientType: clientType || 'direct' } }),
   destinations: () => request.get('/port-charges/destinations'),
   logs: () => request.get('/port-charges/logs'),
   list: (destination) => request.get('/port-charges', { params: { destination } }),

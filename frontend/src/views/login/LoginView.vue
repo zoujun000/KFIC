@@ -20,7 +20,6 @@
           </el-button>
         </el-form-item>
       </el-form>
-      <p class="hint">默认账号：admin / admin123</p>
       <div class="bottom-link">
         没有账号？<router-link to="/register">立即注册</router-link>
       </div>
@@ -86,12 +85,6 @@ const handleLogin = async () => {
   color: #909399;
   font-size: 13px;
   margin: 0;
-}
-.hint {
-  text-align: center;
-  color: #aaa;
-  font-size: 12px;
-  margin-top: 0;
 }
 .bottom-link {
   text-align: center;

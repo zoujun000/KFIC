@@ -82,7 +82,7 @@ public class DestPortChargeServiceImpl implements DestPortChargeService {
     }
 
     @Override
-    public PortChargeSummaryDTO calcCharges(String destination, BigDecimal volume) {
+    public PortChargeSummaryDTO calcCharges(String destination, BigDecimal volume, String clientType) {
         // 标准化：窖/滘 统一为 滘，去空格容忍格式差异
         String normalized = destination != null ? destination.replace('窖', '滘') : destination;
         String noSpace = normalized != null ? normalized.replace(" ", "") : null;
@@ -116,10 +116,14 @@ public class DestPortChargeServiceImpl implements DestPortChargeService {
         dto.setVolume(volume);
         dto.setItems(items);
 
+        boolean isDirect = !"coload".equalsIgnoreCase(clientType);
         Map<String, BigDecimal> totals = new LinkedHashMap<>();
         for (DestPortCharge c : items) {
-            if (c.getAmountDirect() == null || c.getCurrency() == null) continue;
-            BigDecimal amt = calcAmount(c.getAmountDirect(), c.getUnitDirect(), volume, c.getMinDirect());
+            BigDecimal amount = isDirect ? c.getAmountDirect() : c.getAmountCoload();
+            String unit = isDirect ? c.getUnitDirect() : c.getUnitCoload();
+            BigDecimal min = isDirect ? c.getMinDirect() : null;
+            if (amount == null || c.getCurrency() == null) continue;
+            BigDecimal amt = calcAmount(amount, unit, volume, min);
             if (amt == null) continue;
             totals.merge(c.getCurrency(), amt, BigDecimal::add);
         }

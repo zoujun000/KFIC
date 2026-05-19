@@ -48,6 +48,29 @@ public class QuoteController {
         return Result.success(quoteService.listDestinations(country));
     }
 
+    @Operation(summary = "更新单条报价")
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','MAINTAINER')")
+    public Result<Void> update(@PathVariable Long id, @RequestBody FreightQuote quote) {
+        quote.setId(id);
+        quoteService.updateQuote(quote);
+        return Result.success();
+    }
+
+    @Operation(summary = "删除单条报价")
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','MAINTAINER')")
+    public Result<Void> delete(@PathVariable Long id) {
+        quoteService.deleteQuote(id);
+        return Result.success();
+    }
+
+    @Operation(summary = "按目的港查询报价列表（无分页）")
+    @GetMapping("/by-destination")
+    public Result<List<FreightQuote>> listByDestination(@RequestParam String destination) {
+        return Result.success(quoteService.listByDestination(destination));
+    }
+
     @Operation(summary = "上传历史记录")
     @GetMapping("/logs")
     public Result<List<QuoteUploadLog>> logs() {

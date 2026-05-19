@@ -44,6 +44,12 @@ const routes = [
         meta: { title: '报价管理', icon: 'PriceTag' }
       },
       {
+        path: 'quote-manage',
+        name: 'QuoteManage',
+        component: () => import('@/views/quote/QuoteManageView.vue'),
+        meta: { title: '报价管理(编辑)', icon: 'EditPen', requiresManager: true }
+      },
+      {
         path: 'upload',
         name: 'Upload',
         component: () => import('@/views/upload/UploadView.vue'),

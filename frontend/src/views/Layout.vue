@@ -30,6 +30,10 @@
           <el-icon><Goods /></el-icon>
           <template #title>报价管理</template>
         </el-menu-item>
+        <el-menu-item v-if="userStore.isManager" index="/quote-manage">
+          <el-icon><EditPen /></el-icon>
+          <template #title>报价管理(编辑)</template>
+        </el-menu-item>
         <el-menu-item v-if="userStore.isManager" index="/upload">
           <el-icon><Upload /></el-icon>
           <template #title>上传模块</template>
@@ -78,6 +82,10 @@
         <el-menu-item index="/quotes">
           <el-icon><Goods /></el-icon>
           <template #title>报价管理</template>
+        </el-menu-item>
+        <el-menu-item v-if="userStore.isManager" index="/quote-manage">
+          <el-icon><EditPen /></el-icon>
+          <template #title>报价管理(编辑)</template>
         </el-menu-item>
         <el-menu-item v-if="userStore.isManager" index="/upload">
           <el-icon><Upload /></el-icon>

@@ -19,6 +19,9 @@
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="loadData" :disabled="!selectedDest">查询</el-button>
+        <el-button type="success" :icon="Download" @click="downloadExcel" :disabled="tableData.length === 0">
+          下载Excel
+        </el-button>
       </el-form-item>
     </el-form>
 
@@ -106,7 +109,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Ship } from '@element-plus/icons-vue'
+import { Ship, Download } from '@element-plus/icons-vue'
 import { portChargeApi } from '@/api'
 
 const destinations = ref([])
@@ -190,6 +193,61 @@ const handleDelete = async (id) => {
   } catch (e) {
     ElMessage.error('删除失败')
   }
+}
+
+// ===== 下载 Excel =====
+const downloadExcel = () => {
+  if (tableData.value.length === 0) {
+    ElMessage.warning('没有数据可下载')
+    return
+  }
+  const rows = tableData.value
+  const headers = ['中文费项', '英文费项', '货币', '直客金额', '直客单位', '同行金额', '同行单位', '备注']
+  const fields = ['feeNameCn', 'feeNameEn', 'currency', 'amountDirect', 'unitDirect', 'amountCoload', 'unitCoload', 'remarks']
+
+  let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">'
+  html += '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets>'
+  html += '<x:ExcelWorksheet><x:Name>目的港费用</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>'
+  html += '</x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body>'
+  html += '<table border="1">'
+
+  // 标题行
+  html += '<tr><td colspan="' + headers.length + '" style="font-size:14px;font-weight:bold;text-align:center;background:#C00000;color:#fff">'
+  html += '崴航（广州）国际货运代理有限公司 - 目的港费用表</td></tr>'
+  html += '<tr><td colspan="' + headers.length + '" style="font-size:12px;background:#FCE4D6;font-weight:bold">目的港：' + selectedDest.value + '</td></tr>'
+
+  // 表头
+  html += '<tr style="background:#C00000;color:#fff;font-weight:bold">'
+  headers.forEach(h => { html += '<td>' + h + '</td>' })
+  html += '</tr>'
+
+  // 数据行
+  rows.forEach(row => {
+    html += '<tr>'
+    fields.forEach(f => {
+      let val = row[f]
+      if (val == null) val = ''
+      // 金额格式化
+      if ((f === 'amountDirect' || f === 'amountCoload') && val !== '') {
+        val = Number(val).toFixed(2)
+      }
+      html += '<td>' + String(val).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</td>'
+    })
+    html += '</tr>'
+  })
+
+  html += '</table></body></html>'
+
+  const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = '目的港费用_' + selectedDest.value.replace(/[\\/:*?"<>|]/g, '_') + '_' + new Date().toISOString().slice(0, 10) + '.xls'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  ElMessage.success('下载成功')
 }
 
 onMounted(loadDests)

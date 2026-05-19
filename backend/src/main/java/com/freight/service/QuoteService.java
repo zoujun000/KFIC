@@ -31,6 +31,11 @@ public interface QuoteService {
     List<String> listDestinations(String country);
 
     /**
+     * 查询全部报价（无过滤无分页）
+     */
+    List<FreightQuote> listAll();
+
+    /**
      * 按港口缩写查询报价
      */
     List<FreightQuote> listByPortCode(String portCode);

@@ -19,8 +19,8 @@
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="loadData" :disabled="!selectedDest">查询</el-button>
-        <el-button type="success" :icon="Download" @click="downloadExcel" :disabled="tableData.length === 0">
-          下载Excel
+        <el-button type="success" :icon="Download" @click="downloadExcel">
+          下载Excel(全部)
         </el-button>
       </el-form-item>
     </el-form>
@@ -196,12 +196,15 @@ const handleDelete = async (id) => {
 }
 
 // ===== 下载 Excel =====
-const downloadExcel = () => {
-  if (tableData.value.length === 0) {
-    ElMessage.warning('没有数据可下载')
-    return
-  }
-  const rows = tableData.value
+const downloadExcel = async () => {
+  try {
+    ElMessage.info('正在导出全部目的港费用数据...')
+    const res = await portChargeApi.all()
+    const rows = res.data
+    if (!rows || rows.length === 0) {
+      ElMessage.warning('没有数据可下载')
+      return
+    }
   const headers = ['中文费项', '英文费项', '货币', '直客金额', '直客单位', '同行金额', '同行单位', '备注']
   const fields = ['feeNameCn', 'feeNameEn', 'currency', 'amountDirect', 'unitDirect', 'amountCoload', 'unitCoload', 'remarks']
 

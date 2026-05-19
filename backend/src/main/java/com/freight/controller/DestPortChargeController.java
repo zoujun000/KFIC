@@ -73,4 +73,10 @@ public class DestPortChargeController {
         chargeService.deleteCharge(id);
         return Result.success();
     }
+
+    @Operation(summary = "导出全部目的港费用")
+    @GetMapping("/all")
+    public Result<List<DestPortCharge>> listAll() {
+        return Result.success(chargeService.listAll());
+    }
 }

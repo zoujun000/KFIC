@@ -41,13 +41,13 @@ const routes = [
         path: 'quotes',
         name: 'Quotes',
         component: () => import('@/views/quote/QuoteView.vue'),
-        meta: { title: '报价管理', icon: 'PriceTag' }
+        meta: { title: '报价费用管理', icon: 'PriceTag' }
       },
       {
         path: 'quote-manage',
         name: 'QuoteManage',
         component: () => import('@/views/quote/QuoteManageView.vue'),
-        meta: { title: '报价管理(编辑)', icon: 'EditPen', requiresManager: true }
+        meta: { title: '报价费用管理(编辑)', icon: 'EditPen', requiresManager: true }
       },
       {
         path: 'upload',

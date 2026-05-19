@@ -286,4 +286,14 @@ public class DestPortChargeServiceImpl implements DestPortChargeService {
     public void deleteCharge(Long id) {
         chargeMapper.deleteById(id);
     }
+
+    @Override
+    public List<DestPortCharge> listAll() {
+        return chargeMapper.selectList(
+            new LambdaQueryWrapper<DestPortCharge>()
+                .eq(DestPortCharge::getDeleted, 0)
+                .orderByAsc(DestPortCharge::getDestination)
+                .orderByAsc(DestPortCharge::getId)
+        );
+    }
 }

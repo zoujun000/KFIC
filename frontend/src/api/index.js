@@ -29,6 +29,7 @@ export const quoteApi = {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
   query: (params) => request.get('/quotes', { params }),
+  all: () => request.get('/quotes/all'),
   countries: () => request.get('/quotes/countries'),
   destinations: (country) => request.get('/quotes/destinations', { params: { country } }),
   byDestination: (destination) => request.get('/quotes/by-destination', { params: { destination } }),
@@ -58,6 +59,7 @@ export const portChargeApi = {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
   calc: (destination, volume, clientType) => request.get('/port-charges/calc', { params: { destination, volume, clientType: clientType || 'direct' } }),
+  all: () => request.get('/port-charges/all'),
   destinations: () => request.get('/port-charges/destinations'),
   logs: () => request.get('/port-charges/logs'),
   list: (destination) => request.get('/port-charges', { params: { destination } }),

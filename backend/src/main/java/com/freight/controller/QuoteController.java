@@ -71,6 +71,12 @@ public class QuoteController {
         return Result.success(quoteService.listByDestination(destination));
     }
 
+    @Operation(summary = "按港口缩写查询报价")
+    @GetMapping("/by-port-code")
+    public Result<List<FreightQuote>> listByPortCode(@RequestParam String portCode) {
+        return Result.success(quoteService.listByPortCode(portCode));
+    }
+
     @Operation(summary = "上传历史记录")
     @GetMapping("/logs")
     public Result<List<QuoteUploadLog>> logs() {

@@ -32,6 +32,7 @@ export const quoteApi = {
   countries: () => request.get('/quotes/countries'),
   destinations: (country) => request.get('/quotes/destinations', { params: { country } }),
   byDestination: (destination) => request.get('/quotes/by-destination', { params: { destination } }),
+  byPortCode: (portCode) => request.get('/quotes/by-port-code', { params: { portCode } }),
   update: (id, data) => request.put(`/quotes/${id}`, data),
   delete: (id) => request.delete(`/quotes/${id}`),
   logs: () => request.get('/quotes/logs')

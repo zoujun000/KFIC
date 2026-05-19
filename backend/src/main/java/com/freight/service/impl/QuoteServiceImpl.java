@@ -166,6 +166,17 @@ public class QuoteServiceImpl implements QuoteService {
     }
 
     @Override
+    public List<FreightQuote> listByPortCode(String portCode) {
+        if (portCode == null || portCode.isBlank()) return List.of();
+        LambdaQueryWrapper<FreightQuote> w = new LambdaQueryWrapper<FreightQuote>()
+            .eq(FreightQuote::getDeleted, 0)
+            .eq(FreightQuote::getPortCode, portCode.trim().toUpperCase())
+            .orderByAsc(FreightQuote::getVolumeMin)
+            .orderByAsc(FreightQuote::getVia);
+        return quoteMapper.selectList(w);
+    }
+
+    @Override
     public List<FreightQuote> listByDestination(String destination) {
         if (destination == null || destination.isBlank()) return List.of();
         LambdaQueryWrapper<FreightQuote> w = new LambdaQueryWrapper<FreightQuote>()

@@ -323,9 +323,52 @@ const copyQuote = async (row) => {
   const cheapestOf = wh?.of ?? null
   const of = cheapestOf !== null ? String(cheapestOf) : '—'
 
-  // 船期
-  const firstLeg = wh?.firstLeg || ''
-  const mother = wh?.mother || ''
+  // 船期 — 检测"见XXX船期"中转引用
+  let firstLeg = wh?.firstLeg || ''
+  let mother = wh?.mother || ''
+  let transitTime = row.transitTime || '—'
+  const transitPattern = /见\s*([A-Z]{2,4})\s*船期\s*(?:\+?(\d+)\s*天)?/
+  const transitMatch = transitPattern.exec(firstLeg + mother)
+  if (transitMatch) {
+    const transitCode = transitMatch[1]
+    const extraDays = transitMatch[2] ? parseInt(transitMatch[2]) : 0
+    try {
+      const tRes = await quoteApi.byPortCode(transitCode)
+      if (tRes?.data?.length) {
+        const tq = tRes.data[0]
+        // 匹配同仓库
+        const findSchedule = (q) => {
+          if (wh?.name === '乌冲') return { fl: q.wuchongFirstLeg, mv: q.wuchongMotherVessel, tt: q.transitTime }
+          if (wh?.name === '北沙') return { fl: q.beishaFirstLeg, mv: q.beishaMotherVessel, tt: q.transitTime }
+          if (wh?.name === '滘心') return { fl: q.jiaoxinFirstLeg, mv: q.jiaoxinMotherVessel, tt: q.transitTime }
+          // 没选仓库，取第一个有数据的
+          for (const qq of tRes.data) {
+            if (qq.wuchongFirstLeg || qq.beishaFirstLeg || qq.jiaoxinFirstLeg) {
+              return { fl: qq.wuchongFirstLeg || qq.beishaFirstLeg || qq.jiaoxinFirstLeg,
+                       mv: qq.wuchongMotherVessel || qq.beishaMotherVessel || qq.jiaoxinMotherVessel,
+                       tt: qq.transitTime }
+            }
+          }
+          return null
+        }
+        const sched = findSchedule(tq) || findSchedule(tRes.data[0])
+        if (sched) {
+          firstLeg = sched.fl || firstLeg
+          mother = sched.mv || mother
+          // 时效 = 中转港时效 + 额外天数
+          if (sched.tt) {
+            try {
+              const baseTT = parseInt(sched.tt.replace(/[^0-9]/g, ''))
+              transitTime = String(baseTT + extraDays)
+            } catch { transitTime = sched.tt + '+' + extraDays }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('中转船期查询失败:', transitCode, e)
+    }
+  }
+
   const parts = []
   if (firstLeg) parts.push('头程' + firstLeg)
   if (mother) parts.push('大船' + mother)
@@ -406,13 +449,13 @@ const copyQuote = async (row) => {
   const whName = wh ? wh.name : ''
 
   const text =
-`广州${whName ? ' ' + whName : ''} - ${row.destination}
+`广州${whName ? ' ' + whName : ''} - ${row.destination}${row.portCode ? ' [' + row.portCode + ']' : ''}
 O/F 海运费: USD ${of}/RT
 DOC 文件费:CNY 300/BL
 CDF 单证报关:CNY 300/BL(六个品名一份报关费)
 进仓费: CNY 100(办单司机现场给)
 船期: ${scheduleText}
-时效:开大船起 ${row.transitTime || '—'} 天到港
+时效:开大船起 ${transitTime} 天到港
 ${volume}个方CIF总价: ${cifTotal}
 备注 ：${row.remarks || ''}
 目的港费用明细(${volume}CBM)[${clientLabel}]:

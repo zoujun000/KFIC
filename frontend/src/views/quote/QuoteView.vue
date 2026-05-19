@@ -339,34 +339,34 @@ const copyQuote = async (row) => {
       const tRes = await quoteApi.byPortCode(transitCode)
       console.log('[中转解析]', transitCode, '返回:', tRes?.data?.length, '条')
       if (tRes?.data?.length) {
+        const tq = tRes.data[0]
         // 匹配同仓库
         const findSchedule = (q) => {
           if (wh?.name === '乌冲') return { fl: q.wuchongFirstLeg, mv: q.wuchongMotherVessel, tt: q.transitTime }
           if (wh?.name === '北沙') return { fl: q.beishaFirstLeg, mv: q.beishaMotherVessel, tt: q.transitTime }
           if (wh?.name === '滘心') return { fl: q.jiaoxinFirstLeg, mv: q.jiaoxinMotherVessel, tt: q.transitTime }
-          for (const qq of tRes.data) {
-            if (qq.wuchongFirstLeg || qq.beishaFirstLeg || qq.jiaoxinFirstLeg) {
-              return { fl: qq.wuchongFirstLeg || qq.beishaFirstLeg || qq.jiaoxinFirstLeg,
-                       mv: qq.wuchongMotherVessel || qq.beishaMotherVessel || qq.jiaoxinMotherVessel,
-                       tt: qq.transitTime }
-            }
-          }
           return null
         }
-        const sched = findSchedule(tq) || findSchedule({ ...tq, wuchongFirstLeg: tq.wuchongFirstLeg, jiaoxinFirstLeg: tq.jiaoxinFirstLeg, beishaFirstLeg: tq.beishaFirstLeg })
-        if (!sched && tRes.data.length > 0) {
-          const qq = tRes.data[0]
-          sched = { fl: qq.wuchongFirstLeg || qq.beishaFirstLeg || qq.jiaoxinFirstLeg,
-                    mv: qq.wuchongMotherVessel || qq.beishaMotherVessel || qq.jiaoxinMotherVessel,
-                    tt: qq.transitTime }
+        let sched = findSchedule(tq)
+        if (!sched) {
+          for (const qq of tRes.data) {
+            if (qq.wuchongFirstLeg || qq.beishaFirstLeg || qq.jiaoxinFirstLeg) {
+              sched = { fl: qq.wuchongFirstLeg || qq.beishaFirstLeg || qq.jiaoxinFirstLeg,
+                       mv: qq.wuchongMotherVessel || qq.beishaMotherVessel || qq.jiaoxinMotherVessel,
+                       tt: qq.transitTime }
+              break
+            }
+          }
         }
         if (sched) {
           firstLeg = sched.fl || firstLeg
           mother = sched.mv || mother
+          console.log('[中转解析] 替换船期:', firstLeg, mother)
           if (sched.tt) {
             try {
               const baseTT = parseInt(sched.tt.replace(/[^0-9]/g, ''))
               transitTime = String(baseTT + extraDays)
+              console.log('[中转解析] 时效:', sched.tt, '+', extraDays, '=', transitTime)
             } catch { transitTime = sched.tt + '+' + extraDays }
           }
         }

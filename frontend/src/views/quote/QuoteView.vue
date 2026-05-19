@@ -108,7 +108,12 @@
         <el-table-column label="滘心/南沙" width="110">
           <template #default="{ row }"><price-cell :val="row.ofJiaoxin" /></template>
         </el-table-column>
-        <el-table-column prop="transitTime" label="时效" width="80" />
+        <el-table-column label="时效" width="100">
+          <template #default="{ row }">
+            <span v-if="row._resolvedTT" style="color:#e6a23c;font-weight:600">{{ row._resolvedTT }}</span>
+            <span v-else>{{ row.transitTime || '—' }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="carrier" label="船公司" width="110" show-overflow-tooltip />
         <el-table-column label="有效期" width="150">
           <template #default="{ row }">
@@ -276,7 +281,37 @@ const doSearch = async () => {
     total.value = qRes.data.total
 
     if (pRes) portSummary.value = pRes.data
+
+    // 异步解析中转时效（不阻塞结果显示）
+    resolveResultsTransit()
   } finally { searching.value = false }
+}
+
+// 为查询结果解析中转时效
+const resolveResultsTransit = async () => {
+  for (const row of results.value) {
+    // 检测三个仓库是否有中转引用
+    const checkField = (val) => {
+      const m = (val || '').match(/见\s*([A-Z]{2,4})\s*船期/)
+      return m ? m[1] : null
+    }
+    let transitCode = checkField(row.wuchongFirstLeg) || checkField(row.beishaFirstLeg)
+                      || checkField(row.jiaoxinFirstLeg)
+    if (!transitCode) continue
+
+    try {
+      const tRes = await quoteApi.byPortCode(transitCode)
+      if (tRes?.data?.length) {
+        const tq = tRes.data[0]
+        const baseTT = parseInt((tq.transitTime || '').replace(/[^0-9]/g, ''))
+        if (!isNaN(baseTT)) {
+          const dayMatch = (row.transitTime || '').match(/\+?(\d+)/)
+          const extra = dayMatch ? parseInt(dayMatch[1]) : 0
+          row._resolvedTT = baseTT + extra + '天（' + transitCode + '+' + extra + '）'
+        }
+      }
+    } catch { /* ignore */ }
+  }
 }
 
 const resetQuery = () => {

@@ -181,7 +181,7 @@ const saveAll = async () => {
     const payload = {
       id: row.id,
       destination: row.destination,
-      feeNameCn: data.feeNameEn || null,
+      feeNameCn: data.feeNameCn || null,
       feeNameEn: data.feeNameEn || null,
       currency: data.currency || null,
       amountDirect: data.amountDirect ? Number(data.amountDirect) : null,
@@ -245,7 +245,7 @@ const handleSave = async (row) => {
   const payload = {
     id: row.id,
     destination: row.destination,
-    feeNameCn: editForm.feeNameEn || null,
+    feeNameCn: editForm.feeNameCn || null,
     feeNameEn: editForm.feeNameEn || null,
     currency: editForm.currency || null,
     amountDirect: editForm.amountDirect ? Number(editForm.amountDirect) : null,

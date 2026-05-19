@@ -506,11 +506,21 @@ ${volume}个方CIF总价: ${cifTotal}
 ${portDetailText}目的港费用总价[${clientLabel}]: ${portTotal}`
 
   try {
-    await navigator.clipboard.writeText(text)
+    // 尝试 Clipboard API
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+    } else {
+      // 移动端/非HTTPS回退
+      const el = document.createElement('textarea')
+      el.value = text; el.style.position = 'fixed'; el.style.left = '-9999px'
+      document.body.appendChild(el); el.focus(); el.select()
+      document.execCommand('copy'); document.body.removeChild(el)
+    }
     ElMessage.success('已复制到剪贴板')
   } catch (_) {
     const el = document.createElement('textarea')
-    el.value = text; document.body.appendChild(el); el.select()
+    el.value = text; el.style.position = 'fixed'; el.style.left = '-9999px'
+    document.body.appendChild(el); el.focus(); el.select()
     document.execCommand('copy'); document.body.removeChild(el)
     ElMessage.success('已复制到剪贴板')
   } finally {

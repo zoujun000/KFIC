@@ -278,14 +278,20 @@ const handleDelete = async (id) => {
 
 // 下载 Excel
 const downloadExcel = async () => {
+  let rows = []
   try {
     ElMessage.info('正在导出全部报价数据...')
     const res = await quoteApi.all()
-    const rows = res.data
-    if (!rows || rows.length === 0) {
-      ElMessage.warning('没有数据可下载')
-      return
-    }
+    rows = res.data || []
+  } catch (e) {
+    ElMessage.error('导出失败')
+    return
+  }
+  if (!rows || rows.length === 0) {
+    ElMessage.warning('没有数据可下载')
+    return
+  }
+  // ... existing download code uses `rows`
   const headers = [
     '国家', '目的港', '代码', '体积区间', '中转',
     '乌冲OF', '乌冲头程', '乌冲大船',

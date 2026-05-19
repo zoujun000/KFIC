@@ -197,14 +197,19 @@ const handleDelete = async (id) => {
 
 // ===== 下载 Excel =====
 const downloadExcel = async () => {
+  let rows = []
   try {
     ElMessage.info('正在导出全部目的港费用数据...')
     const res = await portChargeApi.all()
-    const rows = res.data
-    if (!rows || rows.length === 0) {
-      ElMessage.warning('没有数据可下载')
-      return
-    }
+    rows = res.data || []
+  } catch (e) {
+    ElMessage.error('导出失败')
+    return
+  }
+  if (!rows || rows.length === 0) {
+    ElMessage.warning('没有数据可下载')
+    return
+  }
   const headers = ['中文费项', '英文费项', '货币', '直客金额', '直客单位', '同行金额', '同行单位', '备注']
   const fields = ['feeNameCn', 'feeNameEn', 'currency', 'amountDirect', 'unitDirect', 'amountCoload', 'unitCoload', 'remarks']
 

@@ -25,7 +25,10 @@ export default defineConfig({
     port: 5173,
     allowedHosts: ['484d8ca0.r3.cpolar.cn'],
     headers: {
-      'Cache-Control': 'no-store, no-cache, must-revalidate'
+      'Cache-Control': 'no-cache'
+    },
+    hmr: {
+      overlay: false
     },
     proxy: {
       '/api': {

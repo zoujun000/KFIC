@@ -331,16 +331,13 @@ const copyQuote = async (row) => {
   const transitMatch = transitPattern.exec(firstLeg + mother)
   if (transitMatch) {
     const transitCode = transitMatch[1]
-    // 额外天数从 transitTime 字段提取（如"中转+2天"→2，或从船期文本兜底）
+    // 额外天数优先从 transitTime 提取（如"中转+2"→2），支持有无"天"字
     let extraDays = 0
-    const dayMatch = (row.transitTime || '').match(/\+?(\d+)\s*天/)
+    const dayMatch = (row.transitTime || '').match(/\+?(\d+)/)
     if (dayMatch) extraDays = parseInt(dayMatch[1])
-    else {
-      const dayMatch2 = (firstLeg + mother).match(/\+?(\d+)\s*天/)
-      if (dayMatch2) extraDays = parseInt(dayMatch2[1])
-    }
     try {
       const tRes = await quoteApi.byPortCode(transitCode)
+      console.log('[中转解析]', transitCode, '返回:', tRes?.data?.length, '条')
       if (tRes?.data?.length) {
         // 匹配同仓库
         const findSchedule = (q) => {
@@ -375,8 +372,10 @@ const copyQuote = async (row) => {
         }
       }
     } catch (e) {
-      console.warn('中转船期查询失败:', transitCode, e)
+      console.warn('[中转解析] API调用失败:', transitCode, e)
     }
+  } else {
+    console.log('[中转解析] 未检测到中转, firstLeg:', firstLeg, 'mother:', mother)
   }
 
   const parts = []

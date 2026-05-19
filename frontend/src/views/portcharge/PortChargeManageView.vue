@@ -92,7 +92,7 @@
           <span v-else>{{ row.remarks || '—' }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="120" fixed="right">
+      <el-table-column v-if="!editAllMode" label="操作" width="120" fixed="right">
         <template #default="{ row }">
           <template v-if="editingId === row.id">
             <el-button size="small" type="primary" @click="handleSave(row)">保存</el-button>
@@ -113,8 +113,7 @@
     <div v-if="!loading && selectedDest && tableData.length === 0" style="text-align:center;padding:60px 0;color:#c0c4cc">
       <el-empty description="该目的港暂无费用数据" />
     </div>
-
-    <el-table-column v-if="!editAllMode" label="操作" width="120" fixed="right">
+  </el-card>
 </template>
 
 <script setup>

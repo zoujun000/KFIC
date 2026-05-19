@@ -352,6 +352,7 @@ const getWarehouseInfo = (row) => {
 
 const copyQuote = async (row) => {
   copyingRow.value = row.id
+  try {
   const volume = parseFloat(query.volume) || 1
 
   const wh = getWarehouseInfo(row)
@@ -524,6 +525,11 @@ ${portDetailText}目的港费用总价[${clientLabel}]: ${portTotal}`
     document.execCommand('copy'); document.body.removeChild(el)
     ElMessage.success('已复制到剪贴板')
   } finally {
+    copyingRow.value = null
+  }
+  } catch (e) {
+    console.error('[复制失败]', e)
+    ElMessage.error('复制失败: ' + (e.message || '请重试'))
     copyingRow.value = null
   }
 }

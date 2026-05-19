@@ -56,7 +56,7 @@ public class FreightOrderController {
 
     @Operation(summary = "删除订单")
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MAINTAINER')")
     public Result<Void> delete(@PathVariable Long id) {
         orderService.delete(id);
         return Result.success();

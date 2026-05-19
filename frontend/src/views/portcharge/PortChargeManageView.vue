@@ -42,19 +42,19 @@
       :header-cell-style="{ background:'#fafafa', color:'#606266', fontWeight:600 }">
       <el-table-column prop="feeNameCn" label="中文费项" width="140">
         <template #default="{ row }">
-          <el-input v-if="editAllMode || editingId === row.id" v-model="getEditData(row.id).feeNameCn" size="small" />
+          <el-input v-if="editAllMode || editingId === row.id" v-model="(editAllMode ? getEditData(row.id) : editForm).feeNameCn" size="small" />
           <span v-else>{{ row.feeNameCn || '—' }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="feeNameEn" label="英文费项" min-width="160">
         <template #default="{ row }">
-          <el-input v-if="editAllMode || editingId === row.id" v-model="getEditData(row.id).feeNameEn" size="small" />
+          <el-input v-if="editAllMode || editingId === row.id" v-model="(editAllMode ? getEditData(row.id) : editForm).feeNameEn" size="small" />
           <span v-else>{{ row.feeNameEn || '—' }}</span>
         </template>
       </el-table-column>
       <el-table-column label="货币" width="90">
         <template #default="{ row }">
-          <el-select v-if="editAllMode || editingId === row.id" v-model="getEditData(row.id).currency" size="small" style="width:80px"
+          <el-select v-if="editAllMode || editingId === row.id" v-model="(editAllMode ? getEditData(row.id) : editForm).currency" size="small" style="width:80px"
             filterable allow-create>
             <el-option v-for="c in currencies" :key="c" :label="c" :value="c" />
           </el-select>
@@ -63,13 +63,13 @@
       </el-table-column>
       <el-table-column prop="amountDirect" label="直客金额" width="120" align="right">
         <template #default="{ row }">
-          <el-input v-if="editAllMode || editingId === row.id" v-model="getEditData(row.id).amountDirect" size="small" style="width:100px" />
+          <el-input v-if="editAllMode || editingId === row.id" v-model="(editAllMode ? getEditData(row.id) : editForm).amountDirect" size="small" style="width:100px" />
           <span v-else>{{ row.amountDirect != null ? Number(row.amountDirect).toFixed(2) : '—' }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="unitDirect" label="单位" width="80">
         <template #default="{ row }">
-          <el-select v-if="editAllMode || editingId === row.id" v-model="getEditData(row.id).unitDirect" size="small" style="width:70px" clearable>
+          <el-select v-if="editAllMode || editingId === row.id" v-model="(editAllMode ? getEditData(row.id) : editForm).unitDirect" size="small" style="width:70px" clearable>
             <el-option v-for="u in units" :key="u" :label="u" :value="u" />
           </el-select>
           <span v-else>{{ row.unitDirect || '—' }}</span>
@@ -77,13 +77,13 @@
       </el-table-column>
       <el-table-column prop="amountCoload" label="同行金额" width="120" align="right">
         <template #default="{ row }">
-          <el-input v-if="editAllMode || editingId === row.id" v-model="getEditData(row.id).amountCoload" size="small" style="width:100px" />
+          <el-input v-if="editAllMode || editingId === row.id" v-model="(editAllMode ? getEditData(row.id) : editForm).amountCoload" size="small" style="width:100px" />
           <span v-else>{{ row.amountCoload != null ? Number(row.amountCoload).toFixed(2) : '—' }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="unitCoload" label="同行单位" width="80">
         <template #default="{ row }">
-          <el-select v-if="editAllMode || editingId === row.id" v-model="getEditData(row.id).unitCoload" size="small" style="width:70px" clearable>
+          <el-select v-if="editAllMode || editingId === row.id" v-model="(editAllMode ? getEditData(row.id) : editForm).unitCoload" size="small" style="width:70px" clearable>
             <el-option v-for="u in units" :key="u" :label="u" :value="u" />
           </el-select>
           <span v-else>{{ row.unitCoload || '—' }}</span>
@@ -91,7 +91,7 @@
       </el-table-column>
       <el-table-column prop="remarks" label="备注" min-width="120" show-overflow-tooltip>
         <template #default="{ row }">
-          <el-input v-if="editAllMode || editingId === row.id" v-model="getEditData(row.id).remarks" size="small" />
+          <el-input v-if="editAllMode || editingId === row.id" v-model="(editAllMode ? getEditData(row.id) : editForm).remarks" size="small" />
           <span v-else>{{ row.remarks || '—' }}</span>
         </template>
       </el-table-column>

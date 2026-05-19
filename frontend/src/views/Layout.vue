@@ -32,7 +32,7 @@
         </el-menu-item>
         <el-menu-item v-if="userStore.isManager" index="/quote-manage">
           <el-icon><EditPen /></el-icon>
-          <template #title>报价费用管理(编辑)</template>
+          <template #title>报价费用管理</template>
         </el-menu-item>
         <el-menu-item v-if="userStore.isManager" index="/upload">
           <el-icon><Upload /></el-icon>
@@ -85,7 +85,7 @@
         </el-menu-item>
         <el-menu-item v-if="userStore.isManager" index="/quote-manage">
           <el-icon><EditPen /></el-icon>
-          <template #title>报价费用管理(编辑)</template>
+          <template #title>报价费用管理</template>
         </el-menu-item>
         <el-menu-item v-if="userStore.isManager" index="/upload">
           <el-icon><Upload /></el-icon>

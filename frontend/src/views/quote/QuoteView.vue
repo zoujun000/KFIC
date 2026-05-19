@@ -506,24 +506,31 @@ ${volume}个方CIF总价: ${cifTotal}
 目的港费用明细(${volume}CBM)[${clientLabel}]:
 ${portDetailText}目的港费用总价[${clientLabel}]: ${portTotal}`
 
-  try {
-    // 尝试 Clipboard API
+  // 复制到剪贴板
+  const doCopy = () => {
+    // 方法1: Clipboard API
     if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text)
-    } else {
-      // 移动端/非HTTPS回退
-      const el = document.createElement('textarea')
-      el.value = text; el.style.position = 'fixed'; el.style.left = '-9999px'
-      document.body.appendChild(el); el.focus(); el.select()
-      document.execCommand('copy'); document.body.removeChild(el)
+      return navigator.clipboard.writeText(text).then(() => true)
     }
-    ElMessage.success('已复制到剪贴板')
-  } catch (_) {
+    // 方法2: execCommand (需用户交互触发)
     const el = document.createElement('textarea')
-    el.value = text; el.style.position = 'fixed'; el.style.left = '-9999px'
+    el.value = text; el.style.cssText = 'position:fixed;left:-9999px;top:0'
     document.body.appendChild(el); el.focus(); el.select()
-    document.execCommand('copy'); document.body.removeChild(el)
-    ElMessage.success('已复制到剪贴板')
+    const ok = document.execCommand('copy')
+    document.body.removeChild(el)
+    return Promise.resolve(ok)
+  }
+  try {
+    const ok = await doCopy()
+    if (ok) { ElMessage.success('已复制到剪贴板') }
+    else { throw new Error('execCommand failed') }
+  } catch (_) {
+    // 兜底：弹窗显示文本
+    ElMessageBox.alert(text.replace(/\n/g, '<br>'), '复制内容', {
+      dangerouslyUseHTMLString: true,
+      confirmButtonText: '关闭',
+      customClass: 'copy-modal'
+    }).catch(() => {})
   } finally {
     copyingRow.value = null
   }

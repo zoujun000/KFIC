@@ -26,30 +26,32 @@
     </el-form>
 
     <!-- 表格 -->
-    <div v-if="tableData.length" style="margin-bottom:8px">
-      <el-button size="small" type="warning" @click="openBatchEdit" :disabled="selectedRows.length === 0">
-        批量修改 ({{ selectedRows.length }})
-      </el-button>
+    <div v-if="tableData.length" style="margin-bottom:8px;display:flex;gap:8px">
+      <template v-if="editAllMode">
+        <el-button size="small" type="primary" :loading="savingAll" @click="saveAll">保存全部</el-button>
+        <el-button size="small" @click="cancelEditAll">取消</el-button>
+      </template>
+      <template v-else>
+        <el-button size="small" type="warning" @click="enterEditAll">编辑全部</el-button>
+      </template>
     </div>
-    <el-table :data="tableData" v-loading="loading" stripe border
-      @selection-change="onSelectionChange" ref="tableRef">
-      <el-table-column type="selection" width="40" /> style="margin-top:12px"
+    <el-table :data="tableData" v-loading="loading" stripe border style="margin-top:12px"
       :header-cell-style="{ background:'#fafafa', color:'#606266', fontWeight:600 }">
       <el-table-column prop="feeNameCn" label="中文费项" width="140">
         <template #default="{ row }">
-          <el-input v-if="editingId === row.id" v-model="editForm.feeNameCn" size="small" />
+          <el-input v-if="editAllMode || editingId === row.id" v-model="getEditData(row.id).feeNameCn" size="small" />
           <span v-else>{{ row.feeNameCn || '—' }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="feeNameEn" label="英文费项" min-width="160">
         <template #default="{ row }">
-          <el-input v-if="editingId === row.id" v-model="editForm.feeNameEn" size="small" />
+          <el-input v-if="editAllMode || editingId === row.id" v-model="getEditData(row.id).feeNameEn" size="small" />
           <span v-else>{{ row.feeNameEn || '—' }}</span>
         </template>
       </el-table-column>
       <el-table-column label="货币" width="90">
         <template #default="{ row }">
-          <el-select v-if="editingId === row.id" v-model="editForm.currency" size="small" style="width:80px"
+          <el-select v-if="editAllMode || editingId === row.id" v-model="getEditData(row.id).currency" size="small" style="width:80px"
             filterable allow-create>
             <el-option v-for="c in currencies" :key="c" :label="c" :value="c" />
           </el-select>
@@ -58,13 +60,13 @@
       </el-table-column>
       <el-table-column prop="amountDirect" label="直客金额" width="120" align="right">
         <template #default="{ row }">
-          <el-input v-if="editingId === row.id" v-model="editForm.amountDirect" size="small" style="width:100px" />
+          <el-input v-if="editAllMode || editingId === row.id" v-model="getEditData(row.id).amountDirect" size="small" style="width:100px" />
           <span v-else>{{ row.amountDirect != null ? Number(row.amountDirect).toFixed(2) : '—' }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="unitDirect" label="单位" width="80">
         <template #default="{ row }">
-          <el-select v-if="editingId === row.id" v-model="editForm.unitDirect" size="small" style="width:70px" clearable>
+          <el-select v-if="editAllMode || editingId === row.id" v-model="getEditData(row.id).unitDirect" size="small" style="width:70px" clearable>
             <el-option v-for="u in units" :key="u" :label="u" :value="u" />
           </el-select>
           <span v-else>{{ row.unitDirect || '—' }}</span>
@@ -72,13 +74,13 @@
       </el-table-column>
       <el-table-column prop="amountCoload" label="同行金额" width="120" align="right">
         <template #default="{ row }">
-          <el-input v-if="editingId === row.id" v-model="editForm.amountCoload" size="small" style="width:100px" />
+          <el-input v-if="editAllMode || editingId === row.id" v-model="getEditData(row.id).amountCoload" size="small" style="width:100px" />
           <span v-else>{{ row.amountCoload != null ? Number(row.amountCoload).toFixed(2) : '—' }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="unitCoload" label="同行单位" width="80">
         <template #default="{ row }">
-          <el-select v-if="editingId === row.id" v-model="editForm.unitCoload" size="small" style="width:70px" clearable>
+          <el-select v-if="editAllMode || editingId === row.id" v-model="getEditData(row.id).unitCoload" size="small" style="width:70px" clearable>
             <el-option v-for="u in units" :key="u" :label="u" :value="u" />
           </el-select>
           <span v-else>{{ row.unitCoload || '—' }}</span>
@@ -86,7 +88,7 @@
       </el-table-column>
       <el-table-column prop="remarks" label="备注" min-width="120" show-overflow-tooltip>
         <template #default="{ row }">
-          <el-input v-if="editingId === row.id" v-model="editForm.remarks" size="small" />
+          <el-input v-if="editAllMode || editingId === row.id" v-model="getEditData(row.id).remarks" size="small" />
           <span v-else>{{ row.remarks || '—' }}</span>
         </template>
       </el-table-column>
@@ -112,48 +114,7 @@
       <el-empty description="该目的港暂无费用数据" />
     </div>
 
-    <!-- 批量修改对话框 -->
-    <el-dialog v-model="batchVisible" title="批量修改" width="500px">
-      <el-form :model="batchForm" label-width="80px">
-        <el-form-item label="修改字段">
-          <el-checkbox-group v-model="batchForm.fields">
-            <el-checkbox label="currency">货币</el-checkbox>
-            <el-checkbox label="amountDirect">直客金额</el-checkbox>
-            <el-checkbox label="unitDirect">直客单位</el-checkbox>
-            <el-checkbox label="amountCoload">同行金额</el-checkbox>
-            <el-checkbox label="unitCoload">同行单位</el-checkbox>
-          </el-checkbox-group>
-        </el-form-item>
-        <el-form-item v-if="batchForm.fields.includes('currency')" label="货币">
-          <el-select v-model="batchForm.currency" filterable allow-create style="width:120px">
-            <el-option v-for="c in currencies" :key="c" :label="c" :value="c" />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-if="batchForm.fields.includes('amountDirect')" label="直客金额">
-          <el-input v-model="batchForm.amountDirect" style="width:120px" />
-        </el-form-item>
-        <el-form-item v-if="batchForm.fields.includes('unitDirect')" label="直客单位">
-          <el-select v-model="batchForm.unitDirect" clearable style="width:120px">
-            <el-option v-for="u in units" :key="u" :label="u" :value="u" />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-if="batchForm.fields.includes('amountCoload')" label="同行金额">
-          <el-input v-model="batchForm.amountCoload" style="width:120px" />
-        </el-form-item>
-        <el-form-item v-if="batchForm.fields.includes('unitCoload')" label="同行单位">
-          <el-select v-model="batchForm.unitCoload" clearable style="width:120px">
-            <el-option v-for="u in units" :key="u" :label="u" :value="u" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="batchVisible = false">取消</el-button>
-        <el-button type="primary" :loading="batchSaving" @click="doBatchUpdate">
-          批量更新 ({{ selectedRows.length }}条)
-        </el-button>
-      </template>
-    </el-dialog>
-  </el-card>
+    <el-table-column v-if="!editAllMode" label="操作" width="120" fixed="right">
 </template>
 
 <script setup>
@@ -174,52 +135,69 @@ const editForm = reactive({
   amountCoload: '', unitCoload: '', remarks: ''
 })
 
-// 批量修改
-const tableRef = ref()
-const selectedRows = ref([])
-const batchVisible = ref(false)
-const batchSaving = ref(false)
-const batchForm = reactive({
-  fields: ['currency'],
-  currency: '', amountDirect: '', unitDirect: '',
-  amountCoload: '', unitCoload: ''
-})
+// 编辑全部模式
+const editAllMode = ref(false)
+const savingAll = ref(false)
+const editAllData = ref({})
 
-const onSelectionChange = (rows) => { selectedRows.value = rows }
-
-const openBatchEdit = () => {
-  if (!selectedRows.value.length) return
-  Object.assign(batchForm, {
-    fields: ['currency'],
-    currency: '', amountDirect: '', unitDirect: '',
-    amountCoload: '', unitCoload: ''
-  })
-  batchVisible.value = true
+const getEditData = (id) => {
+  if (!editAllData.value[id]) {
+    const row = tableData.value.find(r => r.id === id)
+    if (row) {
+      editAllData.value[id] = reactive({
+        feeNameCn: row.feeNameCn || '',
+        feeNameEn: row.feeNameEn || '',
+        currency: row.currency || '',
+        amountDirect: row.amountDirect != null ? String(row.amountDirect) : '',
+        unitDirect: row.unitDirect || '',
+        amountCoload: row.amountCoload != null ? String(row.amountCoload) : '',
+        unitCoload: row.unitCoload || '',
+        remarks: row.remarks || ''
+      })
+    }
+  }
+  return editAllData.value[id]
 }
 
-const doBatchUpdate = async () => {
-  if (!batchForm.fields.length) {
-    ElMessage.warning('请选择要修改的字段')
-    return
-  }
-  batchSaving.value = true
+const enterEditAll = () => {
+  editAllData.value = {}
+  editAllMode.value = true
+  editingId.value = null
+}
+
+const cancelEditAll = () => {
+  editAllMode.value = false
+  editAllData.value = {}
+}
+
+const saveAll = async () => {
+  savingAll.value = true
   let success = 0, fail = 0
-  for (const row of selectedRows.value) {
-    const payload = { id: row.id, destination: row.destination }
-    if (batchForm.fields.includes('currency')) payload.currency = batchForm.currency || null
-    if (batchForm.fields.includes('amountDirect')) payload.amountDirect = batchForm.amountDirect ? Number(batchForm.amountDirect) : null
-    if (batchForm.fields.includes('amountDirect')) payload.amountDirectRaw = batchForm.amountDirect || null
-    if (batchForm.fields.includes('unitDirect')) payload.unitDirect = batchForm.unitDirect || null
-    if (batchForm.fields.includes('amountCoload')) payload.amountCoload = batchForm.amountCoload ? Number(batchForm.amountCoload) : null
-    if (batchForm.fields.includes('amountCoload')) payload.amountColoadRaw = batchForm.amountCoload || null
-    if (batchForm.fields.includes('unitCoload')) payload.unitCoload = batchForm.unitCoload || null
+  for (const row of tableData.value) {
+    const data = editAllData.value[row.id]
+    if (!data) continue
+    const payload = {
+      id: row.id,
+      destination: row.destination,
+      feeNameCn: data.feeNameEn || null,
+      feeNameEn: data.feeNameEn || null,
+      currency: data.currency || null,
+      amountDirect: data.amountDirect ? Number(data.amountDirect) : null,
+      amountDirectRaw: data.amountDirect || null,
+      unitDirect: data.unitDirect || null,
+      amountCoload: data.amountCoload ? Number(data.amountCoload) : null,
+      amountColoadRaw: data.amountCoload || null,
+      unitCoload: data.unitCoload || null,
+      remarks: data.remarks || null
+    }
     try {
       await portChargeApi.update(row.id, payload)
       success++
     } catch { fail++ }
   }
-  batchSaving.value = false
-  batchVisible.value = false
+  savingAll.value = false
+  editAllMode.value = false
+  editAllData.value = {}
   if (fail === 0) ElMessage.success(`成功更新 ${success} 条`)
   else ElMessage.warning(`成功 ${success} 条，失败 ${fail} 条`)
   loadData()

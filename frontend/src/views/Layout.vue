@@ -46,7 +46,7 @@
           <el-icon><EditPen /></el-icon>
           <template #title>目的港费用管理</template>
         </el-menu-item>
-        <el-menu-item v-if="userStore.isManager" index="/user-manage">
+        <el-menu-item v-if="userStore.isAdmin" index="/user-manage">
           <el-icon><Setting /></el-icon>
           <template #title>角色管理</template>
         </el-menu-item>
@@ -99,7 +99,7 @@
           <el-icon><EditPen /></el-icon>
           <template #title>目的港费用管理</template>
         </el-menu-item>
-        <el-menu-item v-if="userStore.isManager" index="/user-manage">
+        <el-menu-item v-if="userStore.isAdmin" index="/user-manage">
           <el-icon><Setting /></el-icon>
           <template #title>角色管理</template>
         </el-menu-item>

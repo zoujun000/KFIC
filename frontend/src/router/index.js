@@ -71,7 +71,7 @@ const routes = [
         path: 'user-manage',
         name: 'UserManage',
         component: () => import('@/views/user/UserManageView.vue'),
-        meta: { title: '角色管理', icon: 'Setting', requiresManager: true }
+        meta: { title: '角色管理', icon: 'Setting', requiresAdmin: true }
       },
     ]
   },

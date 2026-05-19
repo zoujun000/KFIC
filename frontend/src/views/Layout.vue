@@ -28,7 +28,7 @@
         </el-menu-item>
         <el-menu-item index="/quotes">
           <el-icon><Goods /></el-icon>
-          <template #title>报价费用管理</template>
+          <template #title>费用报价</template>
         </el-menu-item>
         <el-menu-item v-if="userStore.isManager" index="/quote-manage">
           <el-icon><EditPen /></el-icon>
@@ -81,7 +81,7 @@
         </el-menu-item>
         <el-menu-item index="/quotes">
           <el-icon><Goods /></el-icon>
-          <template #title>报价费用管理</template>
+          <template #title>费用报价</template>
         </el-menu-item>
         <el-menu-item v-if="userStore.isManager" index="/quote-manage">
           <el-icon><EditPen /></el-icon>

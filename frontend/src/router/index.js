@@ -41,7 +41,7 @@ const routes = [
         path: 'quotes',
         name: 'Quotes',
         component: () => import('@/views/quote/QuoteView.vue'),
-        meta: { title: '费用报价', icon: 'PriceTag' } }
+        meta: { title: '费用报价', icon: 'PriceTag' }
       },
       {
         path: 'quote-manage',

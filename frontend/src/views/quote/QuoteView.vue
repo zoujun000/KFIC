@@ -402,16 +402,17 @@ const copyQuote = async (row) => {
   }
 
   const clientLabel = isDirect ? '直客' : '同行'
-  const whName = wh ? `（${wh.name}）` : ''
 
   const text =
-`广州    to   ${row.destination}
-O/F 海运费${whName}: ${of}/CBM
-DOC 文件费:RMB300/BL
-CDF  单证报关:RMB 300/BL(六个品名一份报关费) 进仓费:RMB 100(办单司机现场给)
+`广州 - ${row.destination}
+O/F ：海运费: ${of}/RT
+DOC ：文件费:RMB300/BL
+CDF ： 单证报关:RMB 300/BL(六个品名一份报关费)
+进仓费:RMB 100(办单司机现场给)
 船期: ${scheduleText}
 时效:开大船起 ${row.transitTime || '—'} 天到港
 ${volume}个方CIF总价: ${cifTotal}
+备注 ：${row.remarks || '—'}
 目的港费用明细(${volume}CBM)[${clientLabel}]:
 ${portDetailText}目的港费用总价[${clientLabel}]: ${portTotal}`
 

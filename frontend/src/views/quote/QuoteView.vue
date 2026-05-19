@@ -386,7 +386,7 @@ const copyQuote = async (row) => {
         const raw = isDirect ? i.amountDirectRaw : i.amountColoadRaw
         const unit = isDirect ? i.unitDirect : i.unitCoload
         const unitStr = unit ? `/${unit}` : ''
-        return `  ${i.feeNameCn || i.feeNameEn}: ${i.currency || ''} ${raw || '—'}${unitStr}`
+        return `${i.feeNameCn || i.feeNameEn}: ${i.currency || ''} ${raw || '—'}${unitStr}`
       })
     if (items.length) {
       portDetailText = items.join('\n') + '\n'
@@ -396,23 +396,23 @@ const copyQuote = async (row) => {
   // CIF总价
   let cifTotal = '—'
   if (cheapestOf !== null) {
-    cifTotal = `USD ${(cheapestOf * volume).toFixed(2)} + RMB 600(文件费+报关费)`
+    cifTotal = `USD ${(cheapestOf * volume).toFixed(2)} + CNY 600(文件费+报关费)`
   } else {
-    cifTotal = 'RMB 600(文件费+报关费)'
+    cifTotal = 'CNY 600(文件费+报关费)'
   }
 
   const clientLabel = isDirect ? '直客' : '同行'
 
   const text =
 `广州 - ${row.destination}
-O/F ：海运费: ${of}/RT
-DOC ：文件费:RMB300/BL
-CDF ： 单证报关:RMB 300/BL(六个品名一份报关费)
-进仓费:RMB 100(办单司机现场给)
+O/F 海运费: USD ${of}/RT
+DOC 文件费:CNY 300/BL
+CDF 单证报关:CNY 300/BL(六个品名一份报关费)
+进仓费: CNY 100(办单司机现场给)
 船期: ${scheduleText}
 时效:开大船起 ${row.transitTime || '—'} 天到港
 ${volume}个方CIF总价: ${cifTotal}
-备注 ：${row.remarks || '—'}
+备注 ：${row.remarks || ''}
 目的港费用明细(${volume}CBM)[${clientLabel}]:
 ${portDetailText}目的港费用总价[${clientLabel}]: ${portTotal}`
 

@@ -96,6 +96,7 @@
       <el-table :data="results" v-loading="searching" stripe border>
         <el-table-column prop="country" label="国家" width="100" />
         <el-table-column prop="destination" label="目的港" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="portCode" label="代码" width="70" />
         <el-table-column prop="volumeRange" label="体积区间" width="120" />
         <el-table-column prop="via" label="中转" width="80" />
         <el-table-column label="乌冲 OF" width="100">
@@ -488,14 +489,14 @@ const downloadExcel = () => {
   }
   const rows = results.value
   const headers = [
-    '国家', '目的港', '体积区间', '中转',
+    '国家', '目的港', '代码', '体积区间', '中转',
     '乌冲OF', '乌冲头程', '乌冲大船',
     '北沙OF', '北沙头程', '北沙大船',
     '滘心OF', '滘心头程', '滘心大船',
     '时效', '船公司', '有效期从', '有效期至', '备注'
   ]
   const fields = [
-    'country', 'destination', 'volumeRange', 'via',
+    'country', 'destination', 'portCode', 'volumeRange', 'via',
     'ofWuchong', 'wuchongFirstLeg', 'wuchongMotherVessel',
     'ofBeisha', 'beishaFirstLeg', 'beishaMotherVessel',
     'ofJiaoxin', 'jiaoxinFirstLeg', 'jiaoxinMotherVessel',

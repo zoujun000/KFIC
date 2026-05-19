@@ -8,13 +8,164 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
 public class QuoteExcelParser {
+
+    // ── 港口缩写映射表：value[0]=港口名关键词, value[1]=缩写 ──
+    private static final String[][] PORT_CODE_MAP = {
+        {"SINGAPORE", "SIN"},
+        {"BUSAN", "BUS"},
+        {"DUBAI", "DXB"}, {"JEBEL ALI", "DXB"},
+        {"NHAVA SHEVA", "NVS"}, {"NHAVA", "NVS"},
+        {"CHENNAI", "CNN"}, {"MADRAS", "CNN"},
+        {"COLOMBO", "CMB"},
+        {"HAMBURG", "HAM"},
+        {"CONSTANTA", "CDN"},
+        {"FELIXSTOWE", "FLX"},
+        {"LE HAVRE", "LHV"},
+        {"ROTTERDAM", "RTM"},
+        {"BARCELONA", "BAR"},
+        {"GENOA", "GOA"},
+        {"ISTANBUL", "IST"}, {"AMBARLI", "IST"},
+        {"AUCKLAND", "ACK"},
+        {"SANTOS", "STS"},
+        {"MANZANILLO", "MZL"},
+        {"COLON FREE ZONE", "CLN"}, {"COLON", "CLN"},
+        {"JEDDAH", "JED"},
+        {"BANGKOK", "BKK"},
+        {"HOCHIMINH", "SGN"}, {"HO CHI MINH", "SGN"},
+        {"HAIPHONG", "HPH"},
+        {"JAKARTA", "JKT"},
+        {"PORT KLANG", "PKG"},
+        {"MANILA", "MNL"},
+        {"TOKYO", "TYO"},
+        {"YOKOHAMA", "YOK"},
+        {"OSAKA", "OSA"},
+        {"KOBE", "UKB"},
+        {"NAGOYA", "NGO"},
+        {"INCHEON", "INC"}, {"INCHON", "INC"},
+        {"MELBOURNE", "MEL"},
+        {"SYDNEY", "SYD"},
+        {"LOS ANGELES", "LAX"}, {"LONG BEACH", "LGB"},
+        {"NEW YORK", "NYC"}, {"NEWARK", "EWR"},
+        {"MONTREAL", "YUL"},
+        {"TORONTO", "YYZ"},
+        {"VANCOUVER", "YVR"},
+        {"ROTTERDAM", "RTM"},
+        {"FELIXSTOWE", "FLX"},
+        {"KARACHI", "KHI"},
+        {"CHITTAGONG", "CGP"},
+        {"MOMBASA", "MBA"},
+        {"TEMA", "TMA"},
+        {"DURBAN", "DUR"},
+        {"CAPE TOWN", "CPT"},
+        {"BUENOS AIRES", "BUE"},
+        {"GUAYAQUIL", "GYE"},
+        {"BUENAVENTURA", "BUN"},
+        {"CALLAO", "CLL"},
+        {"VALPARAISO", "VAP"},
+        {"SAN JOSE", "SJO"},
+        {"ALEXANDRIA", "ALY"},
+        {"CASABLANCA", "CAS"},
+        {"ASHDOD", "ASD"},
+        {"HAIFA", "HFA"},
+        {"PIRAEUS", "PIR"},
+        {"LIMASSOL", "LMS"},
+        {"GDYNIA", "GDY"}, {"GDANSK", "GDN"},
+        {"KEELUNG", "KEL"}, {"TAICHUNG", "TXG"}, {"KAOHSIUNG", "KHH"},
+        {"LAEM CHABANG", "LCH"},
+        {"LAT KRABANG", "LKB"},
+        {"SOKHNA", "SOK"},
+        {"DAMMAM", "DMM"},
+        {"ABU DHABI", "AUH"},
+        {"DOHA", "DOH"},
+        {"KUWAIT", "KWI"},
+        {"MUSCAT", "MCT"},
+        {"AQABA", "AQJ"},
+    };
+
+    /** 根据目的港名称解析港口缩写 */
+    public static String resolvePortCode(String destination) {
+        if (destination == null || destination.isBlank()) return null;
+        String upper = destination.toUpperCase();
+        for (String[] entry : PORT_CODE_MAP) {
+            if (upper.contains(entry[0])) return entry[1];
+        }
+        return null;
+    }
+
+    /** 解析中转船期：头程/大船字段含"见XXX船期"时，替换为实际船期 */
+    private static final Pattern TRANSIT_PATTERN = Pattern.compile(
+        "见\\s*([A-Z]{2,4})\\s*船期(?:\\+?(\\d+)\\s*天)?");
+
+    public static void resolveTransitSchedule(List<FreightQuote> quotes) {
+        // 先构建 portCode → FreightQuote 索引
+        Map<String, FreightQuote> codeIndex = new HashMap<>();
+        for (FreightQuote q : quotes) {
+            if (q.getPortCode() != null && !q.getPortCode().isBlank()) {
+                codeIndex.putIfAbsent(q.getPortCode().trim().toUpperCase(), q);
+            }
+        }
+
+        for (FreightQuote q : quotes) {
+            resolveTransitField(q.getWuchongFirstLeg(), q.getWuchongMotherVessel(),
+                    codeIndex, q, "wuchong");
+            resolveTransitField(q.getBeishaFirstLeg(), q.getBeishaMotherVessel(),
+                    codeIndex, q, "beisha");
+            resolveTransitField(q.getJiaoxinFirstLeg(), q.getJiaoxinMotherVessel(),
+                    codeIndex, q, "jiaoxin");
+        }
+    }
+
+    private static void resolveTransitField(String firstLeg, String motherVessel,
+                                            Map<String, FreightQuote> codeIndex,
+                                            FreightQuote target, String wh) {
+        String combined = (firstLeg != null ? firstLeg : "") + (motherVessel != null ? motherVessel : "");
+        if (combined.isBlank()) return;
+
+        Matcher m = TRANSIT_PATTERN.matcher(combined);
+        if (!m.find()) return;
+
+        String transitCode = m.group(1);
+        int extraDays = 0;
+        if (m.group(2) != null) extraDays = Integer.parseInt(m.group(2));
+
+        FreightQuote transitQuote = codeIndex.get(transitCode);
+        if (transitQuote == null) {
+            log.debug("中转港口未找到: portCode={}", transitCode);
+            return;
+        }
+
+        // 复制中转港口的船期
+        switch (wh) {
+            case "wuchong" -> {
+                target.setWuchongFirstLeg(transitQuote.getWuchongFirstLeg());
+                target.setWuchongMotherVessel(transitQuote.getWuchongMotherVessel());
+            }
+            case "beisha" -> {
+                target.setBeishaFirstLeg(transitQuote.getBeishaFirstLeg());
+                target.setBeishaMotherVessel(transitQuote.getBeishaMotherVessel());
+            }
+            case "jiaoxin" -> {
+                target.setJiaoxinFirstLeg(transitQuote.getJiaoxinFirstLeg());
+                target.setJiaoxinMotherVessel(transitQuote.getJiaoxinMotherVessel());
+            }
+        }
+
+        // 时效 = 中转港口的时效 + 额外天数
+        if (transitQuote.getTransitTime() != null) {
+            try {
+                int baseTT = Integer.parseInt(transitQuote.getTransitTime().replaceAll("[^0-9]", ""));
+                target.setTransitTime(String.valueOf(baseTT + extraDays));
+            } catch (NumberFormatException e) {
+                target.setTransitTime(transitQuote.getTransitTime() + "+" + extraDays);
+            }
+        }
+    }
 
     // ── 黄埔/北沙/滘心 sheet 列索引（0-based）──
     // A=国家 B=目的港 C=体积 D=中转 E=MIN
@@ -67,6 +218,14 @@ public class QuoteExcelParser {
                 result.addAll(parseNanshaSheet(sheet2, "南沙仓", validFrom, validTo));
             }
         }
+        // 补充港口缩写
+        for (FreightQuote q : result) {
+            if (q.getPortCode() == null) {
+                q.setPortCode(resolvePortCode(q.getDestination()));
+            }
+        }
+        // 解析中转船期引用（见XXX船期 → 实际船期+时效）
+        resolveTransitSchedule(result);
         return result;
     }
 

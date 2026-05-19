@@ -34,6 +34,7 @@ public class FreightQuote {
     private String transitTime;
     private String carrier;
     private String remarks;
+    private String portCode;
     private LocalDate validFrom;
     private LocalDate validTo;
 

@@ -327,21 +327,26 @@ const copyQuote = async (row) => {
   let firstLeg = wh?.firstLeg || ''
   let mother = wh?.mother || ''
   let transitTime = row.transitTime || '—'
-  const transitPattern = /见\s*([A-Z]{2,4})\s*船期\s*(?:\+?(\d+)\s*天)?/
+  const transitPattern = /见\s*([A-Z]{2,4})\s*船期/
   const transitMatch = transitPattern.exec(firstLeg + mother)
   if (transitMatch) {
     const transitCode = transitMatch[1]
-    const extraDays = transitMatch[2] ? parseInt(transitMatch[2]) : 0
+    // 额外天数从 transitTime 字段提取（如"中转+2天"→2，或从船期文本兜底）
+    let extraDays = 0
+    const dayMatch = (row.transitTime || '').match(/\+?(\d+)\s*天/)
+    if (dayMatch) extraDays = parseInt(dayMatch[1])
+    else {
+      const dayMatch2 = (firstLeg + mother).match(/\+?(\d+)\s*天/)
+      if (dayMatch2) extraDays = parseInt(dayMatch2[1])
+    }
     try {
       const tRes = await quoteApi.byPortCode(transitCode)
       if (tRes?.data?.length) {
-        const tq = tRes.data[0]
         // 匹配同仓库
         const findSchedule = (q) => {
           if (wh?.name === '乌冲') return { fl: q.wuchongFirstLeg, mv: q.wuchongMotherVessel, tt: q.transitTime }
           if (wh?.name === '北沙') return { fl: q.beishaFirstLeg, mv: q.beishaMotherVessel, tt: q.transitTime }
           if (wh?.name === '滘心') return { fl: q.jiaoxinFirstLeg, mv: q.jiaoxinMotherVessel, tt: q.transitTime }
-          // 没选仓库，取第一个有数据的
           for (const qq of tRes.data) {
             if (qq.wuchongFirstLeg || qq.beishaFirstLeg || qq.jiaoxinFirstLeg) {
               return { fl: qq.wuchongFirstLeg || qq.beishaFirstLeg || qq.jiaoxinFirstLeg,
@@ -351,11 +356,16 @@ const copyQuote = async (row) => {
           }
           return null
         }
-        const sched = findSchedule(tq) || findSchedule(tRes.data[0])
+        const sched = findSchedule(tq) || findSchedule({ ...tq, wuchongFirstLeg: tq.wuchongFirstLeg, jiaoxinFirstLeg: tq.jiaoxinFirstLeg, beishaFirstLeg: tq.beishaFirstLeg })
+        if (!sched && tRes.data.length > 0) {
+          const qq = tRes.data[0]
+          sched = { fl: qq.wuchongFirstLeg || qq.beishaFirstLeg || qq.jiaoxinFirstLeg,
+                    mv: qq.wuchongMotherVessel || qq.beishaMotherVessel || qq.jiaoxinMotherVessel,
+                    tt: qq.transitTime }
+        }
         if (sched) {
           firstLeg = sched.fl || firstLeg
           mother = sched.mv || mother
-          // 时效 = 中转港时效 + 额外天数
           if (sched.tt) {
             try {
               const baseTT = parseInt(sched.tt.replace(/[^0-9]/g, ''))

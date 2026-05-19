@@ -111,7 +111,7 @@
         <el-table-column label="时效" width="100">
           <template #default="{ row }">
             <span v-if="row._resolvedTT" style="color:#e6a23c;font-weight:600">{{ row._resolvedTT }}</span>
-            <span v-else>{{ row.transitTime || '—' }}</span>
+            <span v-else>{{ formatTT(row.transitTime) }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="carrier" label="船公司" width="110" show-overflow-tooltip />
@@ -287,9 +287,20 @@ const doSearch = async () => {
   } finally { searching.value = false }
 }
 
-// 为查询结果解析中转时效
+// 格式化时效显示（"中转+25"→"25天"）
+const formatTT = (tt) => {
+  if (!tt) return '—'
+  const m = tt.match(/中转\+?(\d+)/)
+  return m ? m[1] + '天' : tt
+}
+
 const resolveResultsTransit = async () => {
   for (const row of results.value) {
+    // 格式化 transitTime："中转+25" → "25"
+    if (!row._resolvedTT) {
+      const ttm = (row.transitTime || '').match(/中转\+?(\d+)/)
+      if (ttm) row._resolvedTT = ttm[1] + '天'
+    }
     // 检测三个仓库是否有中转引用
     const checkField = (val) => {
       const m = (val || '').match(/见\s*([A-Z]{2,4})\s*船期/)
@@ -359,12 +370,26 @@ const copyQuote = async (row) => {
   const cheapestOf = wh?.of ?? null
   const of = cheapestOf !== null ? String(cheapestOf) : '—'
 
-  // 船期 — 检测"见XXX船期"中转引用
+  // 船期 — 检测"见XXX船期"中转引用（跨仓库查找）
   let firstLeg = wh?.firstLeg || ''
   let mother = wh?.mother || ''
   let transitTime = row.transitTime || '—'
   const transitPattern = /见\s*([A-Z]{2,4})\s*船期/
-  const transitMatch = transitPattern.exec(firstLeg + mother)
+  let transitMatch = transitPattern.exec(firstLeg + mother)
+  // 当前仓库无中转引用时，查其他仓库
+  if (!transitMatch && wh) {
+    const others = [
+      row.wuchongFirstLeg, row.wuchongMotherVessel,
+      row.beishaFirstLeg, row.beishaMotherVessel,
+      row.jiaoxinFirstLeg, row.jiaoxinMotherVessel
+    ].filter(Boolean).join('')
+    transitMatch = transitPattern.exec(others)
+  }
+  // 兜底：transitTime 含"中转+N"时提取数字显示
+  if (!transitMatch) {
+    const ttm = (row.transitTime || '').match(/中转\+?(\d+)/)
+    if (ttm) transitTime = ttm[1]
+  }
   if (transitMatch) {
     const transitCode = transitMatch[1]
     // 额外天数优先从 transitTime 提取（如"中转+2"→2），支持有无"天"字

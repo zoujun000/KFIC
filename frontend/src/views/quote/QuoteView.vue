@@ -402,9 +402,10 @@ const copyQuote = async (row) => {
   }
 
   const clientLabel = isDirect ? '直客' : '同行'
+  const whName = wh ? wh.name : ''
 
   const text =
-`广州 - ${row.destination}
+`广州${whName ? ' ' + whName : ''} - ${row.destination}
 O/F 海运费: USD ${of}/RT
 DOC 文件费:CNY 300/BL
 CDF 单证报关:CNY 300/BL(六个品名一份报关费)

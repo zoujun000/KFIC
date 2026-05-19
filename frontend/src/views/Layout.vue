@@ -141,23 +141,86 @@
 
       <!-- 主内容 -->
       <el-main class="main">
-        <router-view />
+        <!-- 标签栏 -->
+        <div class="tab-bar" v-if="tabsStore.openedTabs.length">
+          <div class="tab-list">
+            <div
+              v-for="tab in tabsStore.openedTabs" :key="tab.path"
+              class="tab-item"
+              :class="{ active: tabsStore.activeTab === tab.path }"
+              @click="switchTab(tab.path)"
+            >
+              <span class="tab-title">{{ tab.title }}</span>
+              <el-icon class="tab-close" @click.stop="tabsStore.closeTab(tab.path)"><Close /></el-icon>
+            </div>
+          </div>
+          <el-dropdown trigger="click" v-if="tabsStore.openedTabs.length > 0">
+            <el-icon class="tab-more" :size="16"><ArrowDown /></el-icon>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="closeOtherTabs">关闭其他</el-dropdown-item>
+                <el-dropdown-item @click="tabsStore.closeAll();$router.push('/dashboard')">关闭全部</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
+        <div class="tab-content">
+          <router-view v-slot="{ Component }">
+            <keep-alive :include="cachedViews">
+              <component :is="Component" :key="$route.fullPath" />
+            </keep-alive>
+          </router-view>
+        </div>
       </el-main>
     </el-container>
   </el-container>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store/user'
+import { useTabsStore } from '@/store/tabs'
 import { ElMessageBox } from 'element-plus'
-import { SwitchButton, Menu } from '@element-plus/icons-vue'
+import { SwitchButton, Menu, Close } from '@element-plus/icons-vue'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
+const tabsStore = useTabsStore()
 const isCollapse = ref(false)
 const drawerVisible = ref(false)
+
+// 缓存视图名称列表（keep-alive include）
+const cachedViews = computed(() => tabsStore.openedTabs.map(t => t.name).filter(Boolean))
+
+// 切换标签
+const switchTab = (path) => {
+  tabsStore.setActive(path)
+  router.push(path)
+}
+
+// 关闭其他标签
+const closeOtherTabs = () => {
+  tabsStore.closeOther(tabsStore.activeTab)
+  const tab = tabsStore.openedTabs[0]
+  if (tab) router.push(tab.path)
+  else router.push('/dashboard')
+}
+
+// 路由变化时自动打开标签
+watch(() => route.path, (path) => {
+  if (path !== '/login' && path !== '/register' && path !== '/') {
+    tabsStore.openTab(route)
+  }
+}, { immediate: true })
+
+// 仪表盘默认打开
+onMounted(() => {
+  if (route.path === '/dashboard' || route.path === '/') {
+    tabsStore.openTab(route)
+  }
+})
 
 const handleCommand = async (cmd) => {
   if (cmd === 'logout') {
@@ -207,7 +270,76 @@ const handleCommand = async (cmd) => {
   color: #606266;
 }
 .username { font-size: 14px; }
-.main { background: #f5f7fa; padding: 20px; }
+.main { background: #f5f7fa; padding: 0 20px 20px; }
+
+/* ── 标签栏 ── */
+.tab-bar {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-bottom: 1px solid #e8e8e8;
+  margin: 0 -20px 12px;
+  padding: 0 12px;
+  height: 38px;
+  overflow: hidden;
+}
+.tab-list {
+  display: flex;
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+.tab-list::-webkit-scrollbar { display: none; }
+.tab-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  height: 36px;
+  line-height: 36px;
+  font-size: 13px;
+  color: #666;
+  cursor: pointer;
+  border-right: 1px solid #f0f0f0;
+  white-space: nowrap;
+  transition: all 0.2s;
+  position: relative;
+}
+.tab-item:hover { color: #409EFF; background: #f5f7fa; }
+.tab-item.active {
+  color: #409EFF;
+  background: #f5f7fa;
+}
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: #409EFF;
+}
+.tab-close {
+  font-size: 12px;
+  border-radius: 50%;
+  padding: 2px;
+  transition: all 0.2s;
+}
+.tab-close:hover { background: #ddd; color: #f56c6c; }
+.tab-more {
+  flex-shrink: 0;
+  cursor: pointer;
+  color: #999;
+  padding: 4px 8px;
+  border-left: 1px solid #f0f0f0;
+}
+.tab-more:hover { color: #409EFF; }
+.tab-content { min-height: calc(100vh - 200px); }
+
+@media (max-width: 768px) {
+  .tab-bar { margin: 0 -10px 10px; padding: 0 6px; }
+  .tab-item { padding: 0 10px; font-size: 12px; }
+}
 
 /* ── 移动端抽屉 ── */
 .drawer-logo {

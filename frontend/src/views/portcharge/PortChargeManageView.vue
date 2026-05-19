@@ -19,8 +19,11 @@
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="loadData" :disabled="!selectedDest">查询</el-button>
-        <el-button type="success" :icon="Download" @click="downloadExcel">
-          下载Excel(全部)
+        <el-button type="success" :icon="Download" @click="downloadExcel" :disabled="tableData.length === 0">
+          下载Excel
+        </el-button>
+        <el-button :icon="Download" @click="downloadAll">
+          下载全部
         </el-button>
       </el-form-item>
     </el-form>
@@ -273,67 +276,61 @@ const handleDelete = async (id) => {
   }
 }
 
-// ===== 下载 Excel =====
-const downloadExcel = async () => {
-  let rows = []
-  try {
-    ElMessage.info('正在导出全部目的港费用数据...')
-    const res = await portChargeApi.all()
-    rows = res.data || []
-  } catch (e) {
-    ElMessage.error('导出失败')
-    return
-  }
-  if (!rows || rows.length === 0) {
-    ElMessage.warning('没有数据可下载')
-    return
-  }
-  const headers = ['中文费项', '英文费项', '货币', '直客金额', '直客单位', '同行金额', '同行单位', '备注']
-  const fields = ['feeNameCn', 'feeNameEn', 'currency', 'amountDirect', 'unitDirect', 'amountCoload', 'unitCoload', 'remarks']
+const exportHeaders = ['中文费项', '英文费项', '货币', '直客金额', '直客单位', '同行金额', '同行单位', '备注']
+const exportFields = ['feeNameCn', 'feeNameEn', 'currency', 'amountDirect', 'unitDirect', 'amountCoload', 'unitCoload', 'remarks']
 
+// 生成Excel并下载
+const doExport = (rows, headers, fields, title, subtitle, filename) => {
   let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">'
   html += '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets>'
   html += '<x:ExcelWorksheet><x:Name>目的港费用</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>'
   html += '</x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body>'
   html += '<table border="1">'
-
-  // 标题行
-  html += '<tr><td colspan="' + headers.length + '" style="font-size:14px;font-weight:bold;text-align:center;background:#C00000;color:#fff">'
-  html += '崴航（广州）国际货运代理有限公司 - 目的港费用表</td></tr>'
-  html += '<tr><td colspan="' + headers.length + '" style="font-size:12px;background:#FCE4D6;font-weight:bold">目的港：' + selectedDest.value + '</td></tr>'
-
-  // 表头
+  html += '<tr><td colspan="' + headers.length + '" style="font-size:14px;font-weight:bold;text-align:center;background:#C00000;color:#fff">' + title + '</td></tr>'
+  html += '<tr><td colspan="' + headers.length + '" style="font-size:12px;background:#FCE4D6;font-weight:bold">' + subtitle + '</td></tr>'
   html += '<tr style="background:#C00000;color:#fff;font-weight:bold">'
   headers.forEach(h => { html += '<td>' + h + '</td>' })
   html += '</tr>'
-
-  // 数据行
   rows.forEach(row => {
     html += '<tr>'
     fields.forEach(f => {
       let val = row[f]
       if (val == null) val = ''
-      // 金额格式化
-      if ((f === 'amountDirect' || f === 'amountCoload') && val !== '') {
-        val = Number(val).toFixed(2)
-      }
+      if ((f === 'amountDirect' || f === 'amountCoload') && val !== '') val = Number(val).toFixed(2)
       html += '<td>' + String(val).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</td>'
     })
     html += '</tr>'
   })
-
   html += '</table></body></html>'
-
   const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel;charset=utf-8' })
   const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = '目的港费用_' + selectedDest.value.replace(/[\\/:*?"<>|]/g, '_') + '_' + new Date().toISOString().slice(0, 10) + '.xls'
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
+  const a = document.createElement('a'); a.href = url
+  a.download = filename + '_' + new Date().toISOString().slice(0, 10) + '.xls'
+  document.body.appendChild(a); a.click(); document.body.removeChild(a)
   URL.revokeObjectURL(url)
   ElMessage.success('下载成功')
+}
+
+// 下载Excel（当前筛选数据）
+const downloadExcel = () => {
+  if (!tableData.value.length) return ElMessage.warning('没有数据')
+  doExport(tableData.value, exportHeaders, exportFields,
+    '崴航（广州）国际货运代理有限公司 - 目的港费用表',
+    '目的港：' + selectedDest.value,
+    '目的港费用_' + selectedDest.value.replace(/[\\/:*?"<>|]/g, '_'))
+}
+
+// 下载全部数据库数据
+const downloadAll = async () => {
+  try {
+    ElMessage.info('正在导出全部数据...')
+    const res = await portChargeApi.all()
+    const rows = res.data || []
+    if (!rows.length) return ElMessage.warning('无数据')
+    doExport(rows, ['目的港', ...exportHeaders], ['destination', ...exportFields],
+      '崴航（广州）国际货运代理有限公司 - 目的港费用表（全部）',
+      '全部数据', '目的港费用_全部')
+  } catch { ElMessage.error('导出失败') }
 }
 
 onMounted(loadDests)

@@ -19,8 +19,11 @@
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="loadData" :disabled="!selectedDest">查询</el-button>
-        <el-button type="success" :icon="Download" @click="downloadExcel">
-          下载Excel(全部)
+        <el-button type="success" :icon="Download" @click="downloadExcel" :disabled="tableData.length === 0">
+          下载Excel
+        </el-button>
+        <el-button :icon="Download" @click="downloadAll">
+          下载全部
         </el-button>
       </el-form-item>
     </el-form>
@@ -276,22 +279,24 @@ const handleDelete = async (id) => {
   }
 }
 
-// 下载 Excel
-const downloadExcel = async () => {
-  let rows = []
+// 下载 Excel（当前筛选数据）
+const downloadExcel = () => {
+  if (!tableData.value.length) return ElMessage.warning('没有数据')
+  generateExcel(tableData.value, '目的港：' + selectedDest.value)
+}
+
+// 下载全部数据库数据
+const downloadAll = async () => {
   try {
     ElMessage.info('正在导出全部报价数据...')
     const res = await quoteApi.all()
-    rows = res.data || []
-  } catch (e) {
-    ElMessage.error('导出失败')
-    return
-  }
-  if (!rows || rows.length === 0) {
-    ElMessage.warning('没有数据可下载')
-    return
-  }
-  // ... existing download code uses `rows`
+    const rows = res.data || []
+    if (!rows.length) return ElMessage.warning('无数据')
+    generateExcel(rows, '全部数据')
+  } catch { ElMessage.error('导出失败') }
+}
+
+const generateExcel = (rows, subtitle) => {
   const headers = [
     '国家', '目的港', '代码', '体积区间', '中转',
     '乌冲OF', '乌冲头程', '乌冲大船',
@@ -312,15 +317,11 @@ const downloadExcel = async () => {
   html += '<x:ExcelWorksheet><x:Name>散货报价</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>'
   html += '</x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body>'
   html += '<table border="1">'
-
-  html += '<tr><td colspan="' + headers.length + '" style="font-size:14px;font-weight:bold;text-align:center;background:#4472C4;color:#fff">'
-  html += '崴航（广州）国际货运代理有限公司 - 散货报价表</td></tr>'
-  html += '<tr><td colspan="' + headers.length + '" style="font-size:12px;background:#D6E4F0;font-weight:bold">目的港：' + selectedDest.value + '</td></tr>'
-
+  html += '<tr><td colspan="' + headers.length + '" style="font-size:14px;font-weight:bold;text-align:center;background:#4472C4;color:#fff">崴航（广州）国际货运代理有限公司 - 散货报价表</td></tr>'
+  html += '<tr><td colspan="' + headers.length + '" style="font-size:12px;background:#D6E4F0;font-weight:bold">' + subtitle + '</td></tr>'
   html += '<tr style="background:#4472C4;color:#fff;font-weight:bold">'
   headers.forEach(h => { html += '<td>' + h + '</td>' })
   html += '</tr>'
-
   rows.forEach(row => {
     html += '<tr>'
     fields.forEach(f => {
@@ -330,17 +331,12 @@ const downloadExcel = async () => {
     })
     html += '</tr>'
   })
-
   html += '</table></body></html>'
-
   const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel;charset=utf-8' })
   const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
+  const a = document.createElement('a'); a.href = url
   a.download = '散货报价_' + selectedDest.value.replace(/[\\/:*?"<>|]/g, '_') + '_' + new Date().toISOString().slice(0, 10) + '.xls'
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
+  document.body.appendChild(a); a.click(); document.body.removeChild(a)
   URL.revokeObjectURL(url)
   ElMessage.success('下载成功')
 }

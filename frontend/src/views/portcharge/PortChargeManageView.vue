@@ -42,7 +42,8 @@
       </el-table-column>
       <el-table-column label="货币" width="90">
         <template #default="{ row }">
-          <el-select v-if="editingId === row.id" v-model="editForm.currency" size="small" style="width:80px">
+          <el-select v-if="editingId === row.id" v-model="editForm.currency" size="small" style="width:80px"
+            filterable allow-create>
             <el-option v-for="c in currencies" :key="c" :label="c" :value="c" />
           </el-select>
           <span v-else>{{ row.currency || '—' }}</span>

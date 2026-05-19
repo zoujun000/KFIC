@@ -59,7 +59,7 @@ const routes = [
         path: 'logs',
         name: 'Logs',
         component: () => import('@/views/log/LogView.vue'),
-        meta: { title: '日志管理', icon: 'Notebook', requiresManager: true }
+        meta: { title: '日志管理', icon: 'Notebook', requiresAdmin: true }
       },
       {
         path: 'port-charge-manage',

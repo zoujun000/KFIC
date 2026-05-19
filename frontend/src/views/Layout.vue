@@ -38,7 +38,7 @@
           <el-icon><Upload /></el-icon>
           <template #title>上传模块</template>
         </el-menu-item>
-        <el-menu-item v-if="userStore.isManager" index="/logs">
+        <el-menu-item v-if="userStore.isAdmin" index="/logs">
           <el-icon><Notebook /></el-icon>
           <template #title>日志管理</template>
         </el-menu-item>
@@ -91,7 +91,7 @@
           <el-icon><Upload /></el-icon>
           <template #title>上传模块</template>
         </el-menu-item>
-        <el-menu-item v-if="userStore.isManager" index="/logs">
+        <el-menu-item v-if="userStore.isAdmin" index="/logs">
           <el-icon><Notebook /></el-icon>
           <template #title>日志管理</template>
         </el-menu-item>

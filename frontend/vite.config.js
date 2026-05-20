@@ -21,6 +21,16 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src')
     }
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'element-plus': ['element-plus'],
+          'vue-vendor': ['vue', 'vue-router', 'pinia']
+        }
+      }
+    }
+  },
   server: {
     port: 5173,
     allowedHosts: ['92bd833.r1.cpolar.top'],

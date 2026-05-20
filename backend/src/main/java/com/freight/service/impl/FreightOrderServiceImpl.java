@@ -33,7 +33,7 @@ public class FreightOrderServiceImpl implements FreightOrderService {
 
     private LambdaQueryWrapper<FreightOrder> buildBaseQuery(OrderQueryDTO query) {
         LambdaQueryWrapper<FreightOrder> wrapper = new LambdaQueryWrapper<FreightOrder>()
-                .like(StringUtils.hasText(query.getOrderSo()), FreightOrder::getOrderSo, query.getOrderSo())
+                .eq(StringUtils.hasText(query.getOrderSo()), FreightOrder::getOrderSo, query.getOrderSo())
                 .eq(query.getCustomerId() != null, FreightOrder::getCustomerId, query.getCustomerId())
                 .eq(StringUtils.hasText(query.getShipType()), FreightOrder::getShipType, query.getShipType())
                 .eq(StringUtils.hasText(query.getStatus()), FreightOrder::getStatus, query.getStatus());

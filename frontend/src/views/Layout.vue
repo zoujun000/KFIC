@@ -122,6 +122,22 @@
           </el-breadcrumb>
         </div>
         <div class="header-right">
+          <!-- 到港提醒小喇叭 -->
+          <el-popover placement="bottom" :width="380" trigger="click" @show="loadEtaAlerts">
+            <template #reference>
+              <el-badge :value="etaAlertCount" :hidden="etaAlertCount === 0" class="bell-badge">
+                <el-icon class="bell-icon" :size="20"><Bell /></el-icon>
+              </el-badge>
+            </template>
+            <div class="alert-list">
+              <h4 style="margin:0 0 12px;color:#303133;">📢 到港提醒（ETA+1天）</h4>
+              <div v-if="etaAlerts.length === 0" style="color:#909399;text-align:center;padding:20px;">✅ 暂无到港提醒</div>
+              <div v-for="alert in etaAlerts" :key="alert.id" class="alert-item" @click="$router.push('/orders')">
+                <div class="alert-so">🚢 SO: {{ alert.orderSo }}</div>
+                <div class="alert-detail">ETA: {{ alert.eta }} — 已到港，请及时提醒客户提货</div>
+              </div>
+            </div>
+          </el-popover>
           <el-dropdown @command="handleCommand">
             <div class="user-info">
               <el-avatar size="small" :style="{ background: '#409EFF' }">
@@ -177,12 +193,13 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { useTabsStore } from '@/store/tabs'
 import { ElMessageBox } from 'element-plus'
-import { SwitchButton, Menu, Close } from '@element-plus/icons-vue'
+import { SwitchButton, Menu, Close, Bell } from '@element-plus/icons-vue'
+import { orderApi } from '@/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -190,6 +207,8 @@ const userStore = useUserStore()
 const tabsStore = useTabsStore()
 const isCollapse = ref(false)
 const drawerVisible = ref(false)
+const etaAlerts = ref([])
+const etaAlertCount = computed(() => etaAlerts.value.length)
 
 // 缓存视图名称列表（keep-alive include）
 const cachedViews = computed(() => tabsStore.openedTabs.map(t => t.name).filter(Boolean))
@@ -220,6 +239,23 @@ onMounted(() => {
   if (route.path === '/dashboard' || route.path === '/') {
     tabsStore.openTab(route)
   }
+})
+
+// 加载到港提醒
+const loadEtaAlerts = async () => {
+  try {
+    const res = await orderApi.etaAlerts()
+    etaAlerts.value = res.data || []
+  } catch { /* 静默失败 */ }
+}
+
+let alertTimer = null
+onMounted(() => {
+  loadEtaAlerts()
+  alertTimer = setInterval(loadEtaAlerts, 5 * 60 * 1000) // 每5分钟刷新
+})
+onUnmounted(() => {
+  if (alertTimer) clearInterval(alertTimer)
 })
 
 const handleCommand = async (cmd) => {
@@ -270,6 +306,22 @@ const handleCommand = async (cmd) => {
   color: #606266;
 }
 .username { font-size: 14px; }
+
+/* ── 小喇叭通知 ── */
+.bell-badge { margin-right: 16px; cursor: pointer; }
+.bell-icon { color: #606266; transition: color 0.2s; font-size: 20px; }
+.bell-icon:hover { color: #409EFF; }
+.alert-list { max-height: 320px; overflow-y: auto; }
+.alert-item {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.alert-item:last-child { border-bottom: none; }
+.alert-item:hover { background: #f5f7fa; }
+.alert-so { font-weight: 600; color: #303133; margin-bottom: 4px; }
+.alert-detail { font-size: 13px; color: #e6a23c; }
 .main { background: #f5f7fa; padding: 0 20px 20px; }
 
 /* ── 标签栏 ── */

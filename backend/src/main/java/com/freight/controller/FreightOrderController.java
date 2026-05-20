@@ -61,4 +61,10 @@ public class FreightOrderController {
         orderService.delete(id);
         return Result.success();
     }
+
+    @Operation(summary = "查询已到港需提醒的订单（ETA+1天且未提货）")
+    @GetMapping("/eta-alerts")
+    public Result<java.util.List<FreightOrder>> etaAlerts() {
+        return Result.success(orderService.getEtaAlerts());
+    }
 }

@@ -23,7 +23,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    allowedHosts: ['484d8ca0.r3.cpolar.cn'],
+    allowedHosts: ['92bd833.r1.cpolar.top'],
     headers: {
       'Cache-Control': 'no-cache'
     },

@@ -12,4 +12,7 @@ public interface FreightOrderService {
     void update(FreightOrderDTO dto);
     void updateStatus(Long id, String status);
     void delete(Long id);
+
+    /** 查询 ETA 已过 1 天且未提货的订单（到港提醒） */
+    java.util.List<FreightOrder> getEtaAlerts();
 }

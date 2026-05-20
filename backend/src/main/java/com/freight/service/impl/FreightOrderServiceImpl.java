@@ -97,4 +97,19 @@ public class FreightOrderServiceImpl implements FreightOrderService {
         getById(id);
         orderMapper.deleteById(id);
     }
+
+    @Override
+    public java.util.List<FreightOrder> getEtaAlerts() {
+        LambdaQueryWrapper<FreightOrder> wrapper = new LambdaQueryWrapper<FreightOrder>()
+                .isNotNull(FreightOrder::getEta)
+                .apply("DATE_ADD(eta, INTERVAL 1 DAY) <= CURDATE()")
+                .ne(FreightOrder::getStatus, "已提货")
+                .orderByAsc(FreightOrder::getEta);
+
+        if (!SecurityUtil.isAdmin()) {
+            Long userId = SecurityUtil.getCurrentUserId();
+            if (userId != null) wrapper.eq(FreightOrder::getCreatedBy, userId);
+        }
+        return orderMapper.selectList(wrapper);
+    }
 }

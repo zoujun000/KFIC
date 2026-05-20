@@ -22,7 +22,8 @@ export const orderApi = {
   create: (data) => request.post('/orders', data),
   update: (data) => request.put('/orders', data),
   updateStatus: (id, status) => request.put(`/orders/${id}/status`, null, { params: { status } }),
-  delete: (id) => request.delete(`/orders/${id}`)
+  delete: (id) => request.delete(`/orders/${id}`),
+  etaAlerts: () => request.get('/orders/eta-alerts')
 }
 export const quoteApi = {
   upload: (formData) => request.post('/quotes/upload', formData, {

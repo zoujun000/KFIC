@@ -173,6 +173,8 @@ import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { orderApi, customerApi } from '@/api'
 
+defineOptions({ name: 'Orders' })
+
 const loading = ref(false)
 const saving = ref(false)
 const tableData = ref([])

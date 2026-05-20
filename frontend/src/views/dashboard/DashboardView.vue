@@ -203,6 +203,8 @@ import {
 } from '@element-plus/icons-vue'
 import { dashboardApi } from '@/api'
 
+defineOptions({ name: 'Dashboard' })
+
 const loading = ref(false)
 const recentOrders = ref([])
 

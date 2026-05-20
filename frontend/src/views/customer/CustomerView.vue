@@ -243,6 +243,8 @@ import {
 import { customerApi, fileApi } from '@/api'
 import { useDebounce } from '@/composables/useDebounce'
 
+defineOptions({ name: 'Customers' })
+
 const loading = ref(false)
 const saving = ref(false)
 const tableData = ref([])

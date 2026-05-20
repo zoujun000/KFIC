@@ -218,6 +218,8 @@ import { ElMessage } from 'element-plus'
 import { CopyDocument, Edit, Delete, Download } from '@element-plus/icons-vue'
 import { quoteApi, portChargeApi } from '@/api'
 
+defineOptions({ name: 'Quotes' })
+
 const PriceCell = defineComponent({
   props: ['val'],
   setup(props) {

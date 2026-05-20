@@ -62,6 +62,8 @@ import { ElMessage } from 'element-plus'
 import { Upload, Ship } from '@element-plus/icons-vue'
 import { quoteApi, portChargeApi } from '@/api'
 
+defineOptions({ name: 'Upload' })
+
 const uploadQuoteRef = ref()
 const uploadPortRef = ref()
 const quoteFile = ref(null)

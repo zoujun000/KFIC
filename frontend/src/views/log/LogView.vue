@@ -53,6 +53,8 @@ import { ref, onMounted } from 'vue'
 import { Goods, Ship } from '@element-plus/icons-vue'
 import { logApi } from '@/api'
 
+defineOptions({ name: 'Logs' })
+
 const loading = ref(false)
 const tableData = ref([])
 const filterType = ref('')

@@ -197,6 +197,8 @@ import { ElMessage } from 'element-plus'
 import { Goods, Download } from '@element-plus/icons-vue'
 import { quoteApi } from '@/api'
 
+defineOptions({ name: 'QuoteManage' })
+
 const destinations = ref([])
 const selectedDest = ref('')
 const countries = ref([])

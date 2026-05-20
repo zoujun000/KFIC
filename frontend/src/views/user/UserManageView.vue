@@ -70,6 +70,8 @@ import { ElMessage } from 'element-plus'
 import { Setting } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
+defineOptions({ name: 'UserManage' })
+
 const loading = ref(false)
 const tableData = ref([])
 const roleMap = reactive({})

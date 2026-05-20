@@ -187,6 +187,8 @@ import { ElMessage } from 'element-plus'
 import { Ship, Download } from '@element-plus/icons-vue'
 import { portChargeApi } from '@/api'
 
+defineOptions({ name: 'PortChargeManage' })
+
 const destinations = ref([])
 const selectedDest = ref('')
 const countries = ref([])

@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -30,16 +29,7 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     public DashboardStatsDTO getStats() {
-        Long currentUserId = SecurityUtil.isAdmin() ? null : SecurityUtil.getCurrentUserId();
-
-        // 数据隔离条件
-        Consumer<LambdaQueryWrapper<?>> applyDataIsolation = wrapper -> {
-            if (currentUserId != null) {
-                if (wrapper.getEntityClass() == FreightOrder.class) {
-                    ((LambdaQueryWrapper<FreightOrder>) wrapper).eq(FreightOrder::getCreatedBy, currentUserId);
-                }
-            }
-        };
+        final Long currentUserId = SecurityUtil.isAdmin() ? null : SecurityUtil.getCurrentUserId();
 
         // 1. 客户总数
         LambdaQueryWrapper<Customer> customerWrapper = new LambdaQueryWrapper<Customer>()

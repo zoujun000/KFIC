@@ -68,11 +68,10 @@ public class DashboardServiceImpl implements DashboardService {
         // 批量查客户名
         Set<Long> customerIds = recentOrders.stream()
                 .map(FreightOrder::getCustomerId).filter(Objects::nonNull).collect(Collectors.toSet());
-        Map<Long, String> customerNameMap = Map.of();
-        if (!customerIds.isEmpty()) {
-            customerNameMap = customerMapper.selectBatchIds(customerIds).stream()
-                    .collect(Collectors.toMap(Customer::getId, Customer::getCompanyName, (a, b) -> a));
-        }
+        final Map<Long, String> customerNameMap = customerIds.isEmpty()
+                ? Map.of()
+                : customerMapper.selectBatchIds(customerIds).stream()
+                        .collect(Collectors.toMap(Customer::getId, Customer::getCompanyName, (a, b) -> a));
 
         List<OrderSummaryDTO> orderSummaries = recentOrders.stream().map(o -> {
             OrderSummaryDTO dto = new OrderSummaryDTO();

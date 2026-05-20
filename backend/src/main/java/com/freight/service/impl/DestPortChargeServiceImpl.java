@@ -230,7 +230,6 @@ public class DestPortChargeServiceImpl implements DestPortChargeService {
     }
 
     @Override
-    @Override
     public List<String> listCountries() {
         // 从报价表取国家列表
         return quoteMapper.selectList(
@@ -246,27 +245,46 @@ public class DestPortChargeServiceImpl implements DestPortChargeService {
 
     @Override
     public List<String> listDestinations(String country) {
-        if (StringUtils.hasText(country)) {
-            // 从报价表取该国家下的目的港
-            return quoteMapper.selectList(
-                new LambdaQueryWrapper<FreightQuote>()
-                    .select(FreightQuote::getDestination)
-                    .eq(FreightQuote::getDeleted, 0)
-                    .like(FreightQuote::getCountry, country)
-                    .groupBy(FreightQuote::getDestination)
-                    .orderByAsc(FreightQuote::getDestination)
-            ).stream().map(FreightQuote::getDestination)
+        // 无国家筛选时返回全部目的港
+        if (!StringUtils.hasText(country)) {
+            return chargeMapper.selectList(
+                new LambdaQueryWrapper<DestPortCharge>()
+                    .select(DestPortCharge::getDestination)
+                    .eq(DestPortCharge::getDeleted, 0)
+                    .groupBy(DestPortCharge::getDestination)
+                    .orderByAsc(DestPortCharge::getDestination)
+            ).stream().map(DestPortCharge::getDestination)
              .filter(StringUtils::hasText).distinct().toList();
         }
-        // 无国家筛选时返回全部目的港
+
+        // 从报价表取该国家下的核心港名（去括号、去via、统一大写）
+        java.util.Set<String> portCores = quoteMapper.selectList(
+            new LambdaQueryWrapper<FreightQuote>()
+                .select(FreightQuote::getDestination)
+                .eq(FreightQuote::getDeleted, 0)
+                .like(FreightQuote::getCountry, country)
+        ).stream()
+         .map(FreightQuote::getDestination)
+         .filter(StringUtils::hasText)
+         .map(d -> d.replaceAll("\\(.*\\)", "").replaceAll("(?i)\\bvia\\b.*", "").trim().toUpperCase())
+         .filter(d -> d.length() >= 3)
+         .collect(Collectors.toSet());
+
+        if (portCores.isEmpty()) return List.of();
+
+        // 从费用表筛选匹配的目的港
         return chargeMapper.selectList(
             new LambdaQueryWrapper<DestPortCharge>()
                 .select(DestPortCharge::getDestination)
                 .eq(DestPortCharge::getDeleted, 0)
                 .groupBy(DestPortCharge::getDestination)
                 .orderByAsc(DestPortCharge::getDestination)
-        ).stream().map(DestPortCharge::getDestination)
-         .filter(StringUtils::hasText).distinct().toList();
+        ).stream()
+         .map(DestPortCharge::getDestination)
+         .filter(StringUtils::hasText)
+         .distinct()
+         .filter(d -> portCores.stream().anyMatch(c -> d.toUpperCase().contains(c)))
+         .toList();
     }
 
     @Override

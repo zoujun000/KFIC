@@ -325,6 +325,8 @@ public class DestPortChargeServiceImpl implements DestPortChargeService {
 
     @Override
     public void createCharge(DestPortCharge charge) {
+        charge.setSourceSheet("手动添加");
+        charge.setSourceFile("手动添加");
         chargeMapper.insert(charge);
     }
 

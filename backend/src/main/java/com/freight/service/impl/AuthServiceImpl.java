@@ -1,7 +1,6 @@
 package com.freight.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.freight.common.exception.BusinessException;
 import com.freight.dto.LoginDTO;
 import com.freight.dto.RegisterDTO;

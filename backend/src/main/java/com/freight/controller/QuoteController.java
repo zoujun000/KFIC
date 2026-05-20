@@ -85,12 +85,6 @@ public class QuoteController {
         return Result.success(quoteService.listByPortCode(portCode));
     }
 
-    @Operation(summary = "导出全部报价数据")
-    @GetMapping("/all")
-    public Result<List<FreightQuote>> listAll() {
-        return Result.success(quoteService.listAll());
-    }
-
     @Operation(summary = "上传历史记录")
     @GetMapping("/logs")
     public Result<List<QuoteUploadLog>> logs() {

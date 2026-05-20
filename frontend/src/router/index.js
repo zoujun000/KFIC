@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useUserStore } from '@/store/user'
 
 const routes = [
   {
@@ -84,16 +85,15 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token')
-  const role = localStorage.getItem('role')
+  const userStore = useUserStore()
 
-  if (to.meta.requiresAuth !== false && !token) {
+  if (to.meta.requiresAuth !== false && !userStore.isLoggedIn) {
     next('/login')
-  } else if (to.path === '/login' && token) {
+  } else if (to.path === '/login' && userStore.isLoggedIn) {
     next('/')
-  } else if (to.meta.requiresAdmin && role !== 'ADMIN') {
+  } else if (to.meta.requiresAdmin && !userStore.isAdmin) {
     next('/dashboard')
-  } else if (to.meta.requiresManager && role !== 'ADMIN' && role !== 'MAINTAINER') {
+  } else if (to.meta.requiresManager && !userStore.isManager) {
     next('/dashboard')
   } else {
     next()

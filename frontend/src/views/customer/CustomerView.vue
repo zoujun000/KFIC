@@ -22,7 +22,7 @@
     <el-card class="content-card" shadow="never">
       <div class="table-toolbar">
         <el-input v-model="keyword" placeholder="搜索公司名 / 联系人 / 微信 / WhatsApp" clearable
-          :prefix-icon="Search" class="search-input" @change="loadData" />
+          :prefix-icon="Search" class="search-input" />
         <el-button type="primary" :icon="Plus" @click="openDialog()" round>新增客户</el-button>
       </div>
 
@@ -234,13 +234,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
   Search, Plus, Upload, Delete, Document, User, Edit, Phone,
   ChatDotRound, ChatLineSquare, Message, Picture, Close
 } from '@element-plus/icons-vue'
 import { customerApi, fileApi } from '@/api'
+import { useDebounce } from '@/composables/useDebounce'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -338,6 +339,13 @@ const handleDelete = async (id) => {
   ElMessage.success('删除成功')
   loadData()
 }
+
+// 防抖搜索：输入后 300ms 自动查询
+const debouncedKeyword = useDebounce(keyword, 300)
+watch(debouncedKeyword, () => {
+  pageNum.value = 1
+  loadData()
+})
 
 onMounted(loadData)
 </script>

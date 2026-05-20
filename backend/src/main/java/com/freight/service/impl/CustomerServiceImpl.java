@@ -1,6 +1,7 @@
 package com.freight.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.freight.common.exception.BusinessException;
@@ -65,27 +66,23 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     public void update(Customer customer) {
         if (customer.getId() == null) throw new BusinessException("客户ID不能为空");
-        Customer exist = customerMapper.selectById(customer.getId());
-        if (exist == null) throw new BusinessException("客户不存在");
+        LambdaUpdateWrapper<Customer> wrapper = new LambdaUpdateWrapper<Customer>()
+                .eq(Customer::getId, customer.getId());
         if (!SecurityUtil.isAdmin()) {
-            Long userId = SecurityUtil.getCurrentUserId();
-            if (userId != null && !userId.equals(exist.getCreatedBy())) {
-                throw new BusinessException("无权修改该客户");
-            }
+            wrapper.eq(Customer::getCreatedBy, SecurityUtil.getCurrentUserId());
         }
-        customerMapper.updateById(customer);
+        int rows = customerMapper.update(customer, wrapper);
+        if (rows == 0) throw new BusinessException("客户不存在或无权修改");
     }
 
     @Override
     public void delete(Long id) {
-        Customer customer = customerMapper.selectById(id);
-        if (customer == null) throw new BusinessException("客户不存在");
+        LambdaQueryWrapper<Customer> wrapper = new LambdaQueryWrapper<Customer>()
+                .eq(Customer::getId, id);
         if (!SecurityUtil.isAdmin()) {
-            Long userId = SecurityUtil.getCurrentUserId();
-            if (userId != null && !userId.equals(customer.getCreatedBy())) {
-                throw new BusinessException("无权删除该客户");
-            }
+            wrapper.eq(Customer::getCreatedBy, SecurityUtil.getCurrentUserId());
         }
-        customerMapper.deleteById(id);
+        int rows = customerMapper.delete(wrapper);
+        if (rows == 0) throw new BusinessException("客户不存在或无权删除");
     }
 }

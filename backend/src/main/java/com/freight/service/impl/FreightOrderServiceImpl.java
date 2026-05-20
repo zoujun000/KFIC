@@ -1,6 +1,7 @@
 package com.freight.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.freight.common.exception.BusinessException;
@@ -75,30 +76,40 @@ public class FreightOrderServiceImpl implements FreightOrderService {
     @Override
     public void update(FreightOrderDTO dto) {
         if (dto.getId() == null) throw new BusinessException("订单ID不能为空");
-        FreightOrder exist = orderMapper.selectById(dto.getId());
-        if (exist == null) throw new BusinessException("订单不存在");
-        if (!SecurityUtil.isAdmin()) {
-            Long userId = SecurityUtil.getCurrentUserId();
-            if (userId != null && !userId.equals(exist.getCreatedBy())) {
-                throw new BusinessException("无权修改该订单");
-            }
-        }
         FreightOrder order = new FreightOrder();
         BeanUtils.copyProperties(dto, order);
-        orderMapper.updateById(order);
+
+        LambdaUpdateWrapper<FreightOrder> wrapper = new LambdaUpdateWrapper<FreightOrder>()
+                .eq(FreightOrder::getId, dto.getId());
+        if (!SecurityUtil.isAdmin()) {
+            wrapper.eq(FreightOrder::getCreatedBy, SecurityUtil.getCurrentUserId());
+        }
+
+        int rows = orderMapper.update(order, wrapper);
+        if (rows == 0) throw new BusinessException("订单不存在或无权修改");
     }
 
     @Override
     public void updateStatus(Long id, String status) {
-        FreightOrder order = getById(id);
-        order.setStatus(status);
-        orderMapper.updateById(order);
+        LambdaUpdateWrapper<FreightOrder> wrapper = new LambdaUpdateWrapper<FreightOrder>()
+                .eq(FreightOrder::getId, id)
+                .set(FreightOrder::getStatus, status);
+        if (!SecurityUtil.isAdmin()) {
+            wrapper.eq(FreightOrder::getCreatedBy, SecurityUtil.getCurrentUserId());
+        }
+        int rows = orderMapper.update(null, wrapper);
+        if (rows == 0) throw new BusinessException("订单不存在或无权修改");
     }
 
     @Override
     public void delete(Long id) {
-        getById(id);
-        orderMapper.deleteById(id);
+        LambdaQueryWrapper<FreightOrder> wrapper = new LambdaQueryWrapper<FreightOrder>()
+                .eq(FreightOrder::getId, id);
+        if (!SecurityUtil.isAdmin()) {
+            wrapper.eq(FreightOrder::getCreatedBy, SecurityUtil.getCurrentUserId());
+        }
+        int rows = orderMapper.delete(wrapper);
+        if (rows == 0) throw new BusinessException("订单不存在或无权删除");
     }
 
     @Override

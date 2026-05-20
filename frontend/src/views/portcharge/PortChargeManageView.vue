@@ -333,7 +333,7 @@ const downloadAll = async () => {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = '目的港费用_全部_' + new Date().toISOString().slice(0, 10) + '.xls'
+    a.download = '目的港费用_全部_' + new Date().toISOString().slice(0, 10) + '.xlsx'
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)

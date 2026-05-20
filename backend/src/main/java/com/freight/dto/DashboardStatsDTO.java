@@ -17,5 +17,5 @@ public class DashboardStatsDTO {
     private long totalOrders;
     private long inProgressOrders;
     private long completedOrders;
-    private List<FreightOrderDTO> recentOrders;
+    private List<OrderSummaryDTO> recentOrders;
 }

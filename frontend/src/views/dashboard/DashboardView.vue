@@ -51,7 +51,7 @@
             </div>
             <div class="order-meta">
               <span class="order-no">{{ order.orderSo || order.orderNo }}</span>
-              <span class="order-customer">{{ customerNameMap[order.customerId] || '—' }}</span>
+              <span class="order-customer">{{ order.customerName || '—' }}</span>
               <span class="order-ship">
                 <el-tag :type="shipTag[order.shipType]" size="small">{{ shipLabel[order.shipType] }}</el-tag>
                 <el-tag v-if="order.tradeTerms" size="small" effect="plain">{{ order.tradeTerms }}</el-tag>
@@ -96,7 +96,7 @@
             </div>
             <div class="order-meta">
               <span class="order-no">{{ order.orderSo || order.orderNo }}</span>
-              <span class="order-customer">{{ customerNameMap[order.customerId] || '—' }}</span>
+              <span class="order-customer">{{ order.customerName || '—' }}</span>
               <span class="order-ship">
                 <el-tag :type="shipTag[order.shipType]" size="small">{{ shipLabel[order.shipType] }}</el-tag>
               </span>
@@ -135,7 +135,7 @@
               <template #default="{ row }">{{ row.orderSo || row.orderNo }}</template>
             </el-table-column>
             <el-table-column label="客户" width="160">
-              <template #default="{ row }">{{ customerNameMap[row.customerId] || '—' }}</template>
+              <template #default="{ row }">{{ row.customerName || '—' }}</template>
             </el-table-column>
             <el-table-column label="路线" min-width="200">
               <template #default="{ row }">
@@ -201,11 +201,10 @@ import {
   User, Document, Loading, CircleCheck, Clock, Calendar, Right, Box,
   Link, Search
 } from '@element-plus/icons-vue'
-import { orderApi, customerApi } from '@/api'
+import { dashboardApi } from '@/api'
 
 const loading = ref(false)
 const recentOrders = ref([])
-const customerNameMap = ref({})
 
 const shipLabel = { SEA: '海运', AIR: '空运', LAND: '陆运' }
 const shipTag = { SEA: 'primary', AIR: 'success', LAND: 'warning' }
@@ -234,29 +233,13 @@ const formatTime = (t) => {
 onMounted(async () => {
   loading.value = true
   try {
-    // 并行请求：统计 + 最近订单 + 客户列表
-    const [allRes, processingRes, shippedRes, completedRes, recentRes, customerRes] = await Promise.all([
-      orderApi.page({ pageNum: 1, pageSize: 1 }),
-      orderApi.page({ status: '走船', pageNum: 1, pageSize: 1 }),
-      orderApi.page({ status: '已到港', pageNum: 1, pageSize: 1 }),
-      orderApi.page({ status: '已提货', pageNum: 1, pageSize: 1 }),
-      orderApi.page({ pageNum: 1, pageSize: 20 }),
-      customerApi.page({ pageNum: 1, pageSize: 999 })
-    ])
-
-    stats.value[0].value = customerRes.data.total || 0
-    stats.value[1].value = allRes.data.total || 0
-    stats.value[2].value = (processingRes.data.total || 0) + (shippedRes.data.total || 0)
-    stats.value[3].value = completedRes.data.total || 0
-
-    recentOrders.value = recentRes.data.records || []
-
-    // 建立客户 ID → 公司名 映射
-    const nameMap = {}
-    ;(customerRes.data.records || []).forEach(c => {
-      nameMap[c.id] = c.companyName
-    })
-    customerNameMap.value = nameMap
+    const res = await dashboardApi.stats()
+    const d = res.data
+    stats.value[0].value = d.totalCustomers || 0
+    stats.value[1].value = d.totalOrders || 0
+    stats.value[2].value = d.inProgressOrders || 0
+    stats.value[3].value = d.completedOrders || 0
+    recentOrders.value = d.recentOrders || []
   } finally {
     loading.value = false
   }

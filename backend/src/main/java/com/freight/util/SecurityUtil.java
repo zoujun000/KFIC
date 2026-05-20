@@ -22,6 +22,11 @@ public class SecurityUtil {
         return currentUserId.get();
     }
 
+    /** 清除当前线程用户上下文（防止线程池复用导致数据越权） */
+    public static void clear() {
+        currentUserId.remove();
+    }
+
     /** 获取当前登录用户名 */
     public static Optional<String> getCurrentUsername() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())

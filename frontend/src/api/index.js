@@ -16,6 +16,11 @@ export const customerApi = {
 }
 
 // 订单
+// 工作台
+export const dashboardApi = {
+  stats: () => request.get('/dashboard/stats')
+}
+
 export const orderApi = {
   page: (params) => request.get('/orders', { params }),
   getById: (id) => request.get(`/orders/${id}`),

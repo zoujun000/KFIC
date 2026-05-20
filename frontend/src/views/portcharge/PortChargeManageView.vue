@@ -18,7 +18,7 @@
         </el-select>
       </el-form-item>
       <el-form-item label="目的港">
-        <el-select v-model="selectedDest" placeholder="选择或输入目的港" filterable clearable
+        <el-select v-model="selectedDest" placeholder="选择或输入目的港" filterable clearable allow-create
           style="width:280px" @change="loadData" :loading="destLoading">
           <el-option v-for="d in destinations" :key="d" :label="d" :value="d" />
         </el-select>

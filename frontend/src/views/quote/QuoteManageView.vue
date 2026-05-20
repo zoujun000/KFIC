@@ -285,14 +285,25 @@ const downloadExcel = () => {
   generateExcel(tableData.value, '目的港：' + selectedDest.value)
 }
 
-// 下载全部数据库数据
+// 下载全部数据库数据（直接请求后端生成Excel，避免cpolar截断大JSON）
 const downloadAll = async () => {
   try {
-    ElMessage.info('正在导出全部报价数据...')
-    const res = await quoteApi.all()
-    const rows = res.data || []
-    if (!rows.length) return ElMessage.warning('无数据')
-    generateExcel(rows, '全部数据')
+    ElMessage.info('正在导出全部数据...')
+    const token = localStorage.getItem('token')
+    const resp = await fetch('/api/quotes/export', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    if (!resp.ok) throw new Error('导出失败')
+    const blob = await resp.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = '散货报价_全部_' + new Date().toISOString().slice(0, 10) + '.xls'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    ElMessage.success('下载成功')
   } catch { ElMessage.error('导出失败') }
 }
 

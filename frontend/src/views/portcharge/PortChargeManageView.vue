@@ -320,16 +320,25 @@ const downloadExcel = () => {
     '目的港费用_' + selectedDest.value.replace(/[\\/:*?"<>|]/g, '_'))
 }
 
-// 下载全部数据库数据
+// 下载全部数据库数据（直接请求后端生成Excel，避免cpolar截断大JSON）
 const downloadAll = async () => {
   try {
     ElMessage.info('正在导出全部数据...')
-    const res = await portChargeApi.all()
-    const rows = res.data || []
-    if (!rows.length) return ElMessage.warning('无数据')
-    doExport(rows, ['目的港', ...exportHeaders], ['destination', ...exportFields],
-      '崴航（广州）国际货运代理有限公司 - 目的港费用表（全部）',
-      '全部数据', '目的港费用_全部')
+    const token = localStorage.getItem('token')
+    const resp = await fetch('/api/port-charges/export', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    if (!resp.ok) throw new Error('导出失败')
+    const blob = await resp.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = '目的港费用_全部_' + new Date().toISOString().slice(0, 10) + '.xls'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    ElMessage.success('下载成功')
   } catch { ElMessage.error('导出失败') }
 }
 

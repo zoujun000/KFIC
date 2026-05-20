@@ -21,9 +21,11 @@ public class DestPortCharge {
     private String currency;
     private String amountDirectRaw;
     private BigDecimal amountDirect;
+    @TableField(updateStrategy = FieldStrategy.IGNORED)
     private String unitDirect;
     private String amountColoadRaw;
     private BigDecimal amountCoload;
+    @TableField(updateStrategy = FieldStrategy.IGNORED)
     private String unitCoload;
     private BigDecimal minDirect;
     private String remarks;

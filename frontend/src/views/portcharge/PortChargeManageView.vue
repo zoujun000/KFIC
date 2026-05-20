@@ -76,7 +76,7 @@
       </el-table-column>
       <el-table-column prop="unitDirect" label="单位" width="80">
         <template #default="{ row }">
-          <el-select v-if="editAllMode || editingId === row.id" v-model="(editAllMode ? getEditData(row.id) : editForm).unitDirect" size="small" style="width:70px" clearable>
+          <el-select v-if="editAllMode || editingId === row.id" v-model="(editAllMode ? getEditData(row.id) : editForm).unitDirect" size="small" style="width:70px" clearable filterable allow-create>
             <el-option v-for="u in units" :key="u" :label="u" :value="u" />
           </el-select>
           <span v-else>{{ row.unitDirect || '—' }}</span>
@@ -90,7 +90,7 @@
       </el-table-column>
       <el-table-column prop="unitCoload" label="同行单位" width="80">
         <template #default="{ row }">
-          <el-select v-if="editAllMode || editingId === row.id" v-model="(editAllMode ? getEditData(row.id) : editForm).unitCoload" size="small" style="width:70px" clearable>
+          <el-select v-if="editAllMode || editingId === row.id" v-model="(editAllMode ? getEditData(row.id) : editForm).unitCoload" size="small" style="width:70px" clearable filterable allow-create>
             <el-option v-for="u in units" :key="u" :label="u" :value="u" />
           </el-select>
           <span v-else>{{ row.unitCoload || '—' }}</span>
@@ -153,7 +153,7 @@
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="直客单位" label-width="70px">
-              <el-select v-model="addForm.unitDirect" filterable>
+              <el-select v-model="addForm.unitDirect" filterable allow-create>
                 <el-option v-for="u in units" :key="u" :label="u" :value="u" />
               </el-select>
             </el-form-item>
@@ -165,7 +165,7 @@
           </el-col>
         </el-row>
         <el-form-item label="同行单位" label-width="90px">
-          <el-select v-model="addForm.unitCoload" filterable style="width:100%">
+          <el-select v-model="addForm.unitCoload" filterable allow-create style="width:100%">
             <el-option v-for="u in units" :key="u" :label="u" :value="u" />
           </el-select>
         </el-form-item>

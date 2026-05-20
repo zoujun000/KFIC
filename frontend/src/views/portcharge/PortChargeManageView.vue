@@ -127,7 +127,7 @@
         <el-form-item label="目的港">
           <el-input v-model="addForm.destination" disabled />
         </el-form-item>
-        <el-form-item label="中文费项" required>
+        <el-form-item label="中文费项">
           <el-input v-model="addForm.feeNameCn" placeholder="如：码头操作费" />
         </el-form-item>
         <el-form-item label="英文费项">
@@ -136,7 +136,7 @@
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="货币" label-width="70px">
-              <el-select v-model="addForm.currency" filterable>
+              <el-select v-model="addForm.currency" filterable allow-create default-first-option>
                 <el-option v-for="c in currencies" :key="c" :label="c" :value="c" />
               </el-select>
             </el-form-item>
@@ -362,7 +362,6 @@ const openAdd = () => {
 }
 
 const handleAdd = async () => {
-  if (!addForm.feeNameCn) return ElMessage.warning('请输入中文费项')
   adding.value = true
   try {
     await portChargeApi.create({

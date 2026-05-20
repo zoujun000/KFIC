@@ -65,7 +65,7 @@ export const portChargeApi = {
   }),
   calc: (destination, volume, clientType) => request.get('/port-charges/calc', { params: { destination, volume, clientType: clientType || 'direct' } }),
   countries: () => request.get('/port-charges/countries'),
-  destinations: (country) => request.get('/port-charges/destinations', { params: country ? { country } : {} }), () => request.get('/port-charges/destinations'),
+  destinations: (country) => request.get('/port-charges/destinations', { params: country ? { country } : {} }),
   logs: () => request.get('/port-charges/logs'),
   list: (destination) => request.get('/port-charges', { params: { destination } }),
   create: (data) => request.post('/port-charges', data),

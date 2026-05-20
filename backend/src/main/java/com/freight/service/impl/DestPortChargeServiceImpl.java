@@ -5,7 +5,9 @@ import com.freight.common.exception.BusinessException;
 import com.freight.dto.PortChargeSummaryDTO;
 import com.freight.entity.DestPortCharge;
 import com.freight.entity.PortChargeUploadLog;
+import com.freight.entity.FreightQuote;
 import com.freight.mapper.DestPortChargeMapper;
+import com.freight.mapper.FreightQuoteMapper;
 import com.freight.mapper.PortChargeUploadLogMapper;
 import com.freight.service.DestPortChargeService;
 import com.freight.util.DestPortChargeParser;
@@ -29,6 +31,7 @@ public class DestPortChargeServiceImpl implements DestPortChargeService {
 
     private final DestPortChargeMapper chargeMapper;
     private final PortChargeUploadLogMapper uploadLogMapper;
+    private final FreightQuoteMapper quoteMapper;
 
     @Override
     @Transactional
@@ -227,7 +230,35 @@ public class DestPortChargeServiceImpl implements DestPortChargeService {
     }
 
     @Override
-    public List<String> listDestinations() {
+    @Override
+    public List<String> listCountries() {
+        // 从报价表取国家列表
+        return quoteMapper.selectList(
+            new LambdaQueryWrapper<FreightQuote>()
+                .select(FreightQuote::getCountry)
+                .eq(FreightQuote::getDeleted, 0)
+                .isNotNull(FreightQuote::getCountry)
+                .groupBy(FreightQuote::getCountry)
+                .orderByAsc(FreightQuote::getCountry)
+        ).stream().map(FreightQuote::getCountry)
+         .filter(StringUtils::hasText).distinct().toList();
+    }
+
+    @Override
+    public List<String> listDestinations(String country) {
+        if (StringUtils.hasText(country)) {
+            // 从报价表取该国家下的目的港
+            return quoteMapper.selectList(
+                new LambdaQueryWrapper<FreightQuote>()
+                    .select(FreightQuote::getDestination)
+                    .eq(FreightQuote::getDeleted, 0)
+                    .like(FreightQuote::getCountry, country)
+                    .groupBy(FreightQuote::getDestination)
+                    .orderByAsc(FreightQuote::getDestination)
+            ).stream().map(FreightQuote::getDestination)
+             .filter(StringUtils::hasText).distinct().toList();
+        }
+        // 无国家筛选时返回全部目的港
         return chargeMapper.selectList(
             new LambdaQueryWrapper<DestPortCharge>()
                 .select(DestPortCharge::getDestination)
@@ -235,7 +266,7 @@ public class DestPortChargeServiceImpl implements DestPortChargeService {
                 .groupBy(DestPortCharge::getDestination)
                 .orderByAsc(DestPortCharge::getDestination)
         ).stream().map(DestPortCharge::getDestination)
-         .filter(StringUtils::hasText).distinct().collect(Collectors.toList());
+         .filter(StringUtils::hasText).distinct().toList();
     }
 
     @Override

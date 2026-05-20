@@ -12,12 +12,15 @@
     <!-- 搜索 -->
     <el-form :inline="true" class="search-bar">
       <el-form-item label="国家/地区">
-        <el-input v-model="regionFilter" placeholder="输入过滤" clearable style="width:140px" @input="filterDestinations" />
+        <el-select v-model="selectedCountry" placeholder="全部国家" clearable filterable
+          style="width:160px" @change="onCountryChange" :loading="countryLoading">
+          <el-option v-for="c in countries" :key="c" :label="c" :value="c" />
+        </el-select>
       </el-form-item>
       <el-form-item label="目的港">
         <el-select v-model="selectedDest" placeholder="选择或输入目的港" filterable clearable
           style="width:280px" @change="loadData" :loading="destLoading">
-          <el-option v-for="d in filteredDestinations" :key="d" :label="d" :value="d" />
+          <el-option v-for="d in destinations" :key="d" :label="d" :value="d" />
         </el-select>
       </el-form-item>
       <el-form-item>
@@ -185,9 +188,10 @@ import { Ship, Download } from '@element-plus/icons-vue'
 import { portChargeApi } from '@/api'
 
 const destinations = ref([])
-const filteredDestinations = ref([])
 const selectedDest = ref('')
-const regionFilter = ref('')
+const countries = ref([])
+const selectedCountry = ref('')
+const countryLoading = ref(false)
 const tableData = ref([])
 const loading = ref(false)
 const destLoading = ref(false)
@@ -276,20 +280,24 @@ const saveAll = async () => {
 const currencies = ['USD', 'EUR', 'HKD', 'SGD', 'THB', 'AED', 'KRW', 'NTD', 'GBP', 'AUD', 'CAD', 'ZAR', 'BRL', 'MOP', 'TWD', 'RMB', 'JPY']
 const units = ['WM', 'BL', 'SET', 'TON', 'BLOCK', '100KG']
 
-const loadDests = async () => {
-  destLoading.value = true
+const loadCountries = async () => {
+  countryLoading.value = true
   try {
-    const res = await portChargeApi.destinations()
+    const res = await portChargeApi.countries()
+    countries.value = res.data
+  } finally { countryLoading.value = false }
+}
+
+const loadDests = async (country) => {
+  destLoading.value = true; selectedDest.value = ''
+  try {
+    const res = await portChargeApi.destinations(country || '')
     destinations.value = res.data
-    filteredDestinations.value = res.data
   } finally { destLoading.value = false }
 }
 
-const filterDestinations = () => {
-  const kw = regionFilter.value.toLowerCase()
-  filteredDestinations.value = kw
-    ? destinations.value.filter(d => d.toLowerCase().includes(kw))
-    : destinations.value
+const onCountryChange = (val) => {
+  loadDests(val || '')
 }
 
 const loadData = async () => {
@@ -453,7 +461,7 @@ const downloadAll = async () => {
   } catch { ElMessage.error('导出失败') }
 }
 
-onMounted(loadDests)
+onMounted(() => { loadCountries(); loadDests() })
 </script>
 
 <style scoped>

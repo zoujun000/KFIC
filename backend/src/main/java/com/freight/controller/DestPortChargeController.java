@@ -47,10 +47,16 @@ public class DestPortChargeController {
         return Result.success(chargeService.calcCharges(destination, volume, clientType));
     }
 
+    @Operation(summary = "获取国家列表（从报价表映射）")
+    @GetMapping("/countries")
+    public Result<List<String>> countries() {
+        return Result.success(chargeService.listCountries());
+    }
+
     @Operation(summary = "获取目的港列表")
     @GetMapping("/destinations")
-    public Result<List<String>> destinations() {
-        return Result.success(chargeService.listDestinations());
+    public Result<List<String>> destinations(@RequestParam(required = false) String country) {
+        return Result.success(chargeService.listDestinations(country));
     }
 
     @Operation(summary = "上传历史记录")

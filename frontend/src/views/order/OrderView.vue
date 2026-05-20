@@ -3,7 +3,7 @@
     <!-- 搜索栏 -->
     <el-form :inline="true" :model="query" class="search-form">
       <el-form-item label="SO号">
-        <el-input v-model="query.orderSo" placeholder="请输入SO号" clearable />
+        <el-input v-model.trim="query.orderSo" placeholder="请输入SO号" clearable />
       </el-form-item>
       <el-form-item label="运输方式">
         <el-select v-model="query.shipType" placeholder="全部" clearable style="width:120px">
@@ -88,7 +88,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="SO号" prop="orderSo">
-              <el-input v-model="form.orderSo" placeholder="请输入SO号" />
+              <el-input v-model.trim="form.orderSo" placeholder="请输入SO号" />
             </el-form-item>
           </el-col>
           <el-col :span="12">

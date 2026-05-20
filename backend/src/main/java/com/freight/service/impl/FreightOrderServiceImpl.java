@@ -32,8 +32,11 @@ public class FreightOrderServiceImpl implements FreightOrderService {
     }
 
     private LambdaQueryWrapper<FreightOrder> buildBaseQuery(OrderQueryDTO query) {
+        // 精确匹配时 trim 掉首尾空格
+        String so = query.getOrderSo();
+        if (StringUtils.hasText(so)) so = so.trim();
         LambdaQueryWrapper<FreightOrder> wrapper = new LambdaQueryWrapper<FreightOrder>()
-                .eq(StringUtils.hasText(query.getOrderSo()), FreightOrder::getOrderSo, query.getOrderSo())
+                .eq(StringUtils.hasText(so), FreightOrder::getOrderSo, so)
                 .eq(query.getCustomerId() != null, FreightOrder::getCustomerId, query.getCustomerId())
                 .eq(StringUtils.hasText(query.getShipType()), FreightOrder::getShipType, query.getShipType())
                 .eq(StringUtils.hasText(query.getStatus()), FreightOrder::getStatus, query.getStatus());

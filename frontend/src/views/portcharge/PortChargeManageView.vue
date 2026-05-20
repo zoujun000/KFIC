@@ -36,16 +36,17 @@
 
     <!-- 操作按钮栏 -->
     <div v-if="selectedDest" style="margin-bottom:8px;display:flex;gap:8px">
-      <el-button size="small" type="success" @click="openAdd">+ 添加费项</el-button>
-      <template v-if="tableData.length && editAllMode">
+      <template v-if="editAllMode">
+        <el-button size="small" type="success" @click="addNewRow">+ 添加一行</el-button>
         <el-button size="small" type="primary" :loading="savingAll" @click="saveAll">保存全部</el-button>
         <el-button size="small" @click="cancelEditAll">取消</el-button>
       </template>
-      <template v-else-if="tableData.length">
-        <el-button size="small" type="warning" @click="enterEditAll">编辑全部</el-button>
+      <template v-else>
+        <el-button size="small" type="success" @click="openAdd">+ 添加费项</el-button>
+        <el-button v-if="tableData.length" size="small" type="warning" @click="enterEditAll">编辑全部</el-button>
       </template>
     </div>
-    <el-table :data="tableData" v-loading="loading" stripe border style="margin-top:12px"
+    <el-table :data="displayRows" v-loading="loading" stripe border style="margin-top:12px"
       :header-cell-style="{ background:'#fafafa', color:'#606266', fontWeight:600 }">
       <el-table-column prop="feeNameCn" label="中文费项" width="140">
         <template #default="{ row }">
@@ -182,7 +183,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Ship, Download } from '@element-plus/icons-vue'
 import { portChargeApi } from '@/api'
@@ -215,20 +216,28 @@ const editForm = reactive({
 const editAllMode = ref(false)
 const savingAll = ref(false)
 const editAllData = ref({})
+const newRows = ref([])
+let tempIdCounter = -1
+
+const displayRows = computed(() => [...tableData.value, ...newRows.value])
 
 const getEditData = (id) => {
   if (!editAllData.value[id]) {
+    // 查找现有行
     const row = tableData.value.find(r => r.id === id)
-    if (row) {
+    // 查找新增临时行
+    const newRow = newRows.value.find(r => r.id === id)
+    const src = row || newRow
+    if (src || id < 0) {
       editAllData.value[id] = reactive({
-        feeNameCn: row.feeNameCn || '',
-        feeNameEn: row.feeNameEn || '',
-        currency: row.currency || '',
-        amountDirect: row.amountDirect != null ? String(row.amountDirect) : '',
-        unitDirect: row.unitDirect || '',
-        amountCoload: row.amountCoload != null ? String(row.amountCoload) : '',
-        unitCoload: row.unitCoload || '',
-        remarks: row.remarks || ''
+        feeNameCn: src?.feeNameCn || '',
+        feeNameEn: src?.feeNameEn || '',
+        currency: src?.currency || 'USD',
+        amountDirect: src?.amountDirect != null ? String(src.amountDirect) : '',
+        unitDirect: src?.unitDirect || '',
+        amountCoload: src?.amountCoload != null ? String(src.amountCoload) : '',
+        unitCoload: src?.unitCoload || '',
+        remarks: src?.remarks || ''
       })
     }
   }
@@ -237,45 +246,85 @@ const getEditData = (id) => {
 
 const enterEditAll = () => {
   editAllData.value = {}
+  newRows.value = []
+  tempIdCounter = -1
   editAllMode.value = true
   editingId.value = null
+}
+
+const addNewRow = () => {
+  newRows.value.push({
+    id: tempIdCounter--,
+    destination: selectedDest.value,
+    feeNameCn: '', feeNameEn: '', currency: 'USD',
+    amountDirect: null, unitDirect: '',
+    amountCoload: null, unitCoload: '', remarks: ''
+  })
 }
 
 const cancelEditAll = () => {
   editAllMode.value = false
   editAllData.value = {}
+  newRows.value = []
 }
 
 const saveAll = async () => {
   savingAll.value = true
-  let success = 0, fail = 0
+  let updated = 0, created = 0, fail = 0
+
+  // 1. 更新已有行
   for (const row of tableData.value) {
     const data = editAllData.value[row.id]
     if (!data) continue
-    const payload = {
-      id: row.id,
-      destination: row.destination,
-      feeNameCn: data.feeNameCn || null,
-      feeNameEn: data.feeNameEn || null,
-      currency: data.currency || null,
-      amountDirect: data.amountDirect ? Number(data.amountDirect) : null,
-      amountDirectRaw: data.amountDirect || null,
-      unitDirect: data.unitDirect || null,
-      amountCoload: data.amountCoload ? Number(data.amountCoload) : null,
-      amountColoadRaw: data.amountCoload || null,
-      unitCoload: data.unitCoload || null,
-      remarks: data.remarks || null
-    }
     try {
-      await portChargeApi.update(row.id, payload)
-      success++
+      await portChargeApi.update(row.id, {
+        id: row.id,
+        destination: row.destination,
+        feeNameCn: data.feeNameCn || null,
+        feeNameEn: data.feeNameEn || null,
+        currency: data.currency || null,
+        amountDirect: data.amountDirect ? Number(data.amountDirect) : null,
+        amountDirectRaw: data.amountDirect || null,
+        unitDirect: data.unitDirect || null,
+        amountCoload: data.amountCoload ? Number(data.amountCoload) : null,
+        amountColoadRaw: data.amountCoload || null,
+        unitCoload: data.unitCoload || null,
+        remarks: data.remarks || null
+      })
+      updated++
     } catch { fail++ }
   }
+
+  // 2. 新增临时行
+  for (const row of newRows.value) {
+    const data = editAllData.value[row.id]
+    if (!data) continue
+    try {
+      await portChargeApi.create({
+        destination: selectedDest.value,
+        feeNameCn: data.feeNameCn || null,
+        feeNameEn: data.feeNameEn || null,
+        currency: data.currency || 'USD',
+        amountDirect: data.amountDirect ? Number(data.amountDirect) : null,
+        amountDirectRaw: data.amountDirect || null,
+        unitDirect: data.unitDirect || null,
+        amountCoload: data.amountCoload ? Number(data.amountCoload) : null,
+        amountColoadRaw: data.amountCoload || null,
+        unitCoload: data.unitCoload || null,
+        remarks: data.remarks || null
+      })
+      created++
+    } catch { fail++ }
+  }
+
   savingAll.value = false
   editAllMode.value = false
   editAllData.value = {}
-  if (fail === 0) ElMessage.success(`成功更新 ${success} 条`)
-  else ElMessage.warning(`成功 ${success} 条，失败 ${fail} 条`)
+  newRows.value = []
+
+  const msg = [`更新 ${updated} 条`, created > 0 ? `新增 ${created} 条` : ''].filter(Boolean).join('，')
+  if (fail === 0) ElMessage.success(msg)
+  else ElMessage.warning(`${msg}，失败 ${fail} 条`)
   loadData()
 }
 
@@ -353,6 +402,13 @@ const handleSave = async (row) => {
 }
 
 const handleDelete = async (id) => {
+  // 临时新增行直接移除
+  if (id < 0) {
+    newRows.value = newRows.value.filter(r => r.id !== id)
+    delete editAllData.value[id]
+    ElMessage.success('已移除')
+    return
+  }
   try {
     await portChargeApi.delete(id)
     ElMessage.success('删除成功')

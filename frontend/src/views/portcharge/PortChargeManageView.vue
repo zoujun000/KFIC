@@ -11,10 +11,13 @@
 
     <!-- 搜索 -->
     <el-form :inline="true" class="search-bar">
+      <el-form-item label="国家/地区">
+        <el-input v-model="regionFilter" placeholder="输入过滤" clearable style="width:140px" @input="filterDestinations" />
+      </el-form-item>
       <el-form-item label="目的港">
         <el-select v-model="selectedDest" placeholder="选择或输入目的港" filterable clearable
-          style="width:320px" @change="loadData" :loading="destLoading">
-          <el-option v-for="d in destinations" :key="d" :label="d" :value="d" />
+          style="width:280px" @change="loadData" :loading="destLoading">
+          <el-option v-for="d in filteredDestinations" :key="d" :label="d" :value="d" />
         </el-select>
       </el-form-item>
       <el-form-item>
@@ -28,13 +31,14 @@
       </el-form-item>
     </el-form>
 
-    <!-- 表格 -->
-    <div v-if="tableData.length" style="margin-bottom:8px;display:flex;gap:8px">
-      <template v-if="editAllMode">
+    <!-- 操作按钮栏 -->
+    <div v-if="selectedDest" style="margin-bottom:8px;display:flex;gap:8px">
+      <el-button size="small" type="success" @click="openAdd">+ 添加费项</el-button>
+      <template v-if="tableData.length && editAllMode">
         <el-button size="small" type="primary" :loading="savingAll" @click="saveAll">保存全部</el-button>
         <el-button size="small" @click="cancelEditAll">取消</el-button>
       </template>
-      <template v-else>
+      <template v-else-if="tableData.length">
         <el-button size="small" type="warning" @click="enterEditAll">编辑全部</el-button>
       </template>
     </div>
@@ -116,6 +120,61 @@
     <div v-if="!loading && selectedDest && tableData.length === 0" style="text-align:center;padding:60px 0;color:#c0c4cc">
       <el-empty description="该目的港暂无费用数据" />
     </div>
+
+    <!-- 新增费项弹窗 -->
+    <el-dialog v-model="addVisible" title="新增费项" width="520px">
+      <el-form :model="addForm" label-width="90px">
+        <el-form-item label="目的港">
+          <el-input v-model="addForm.destination" disabled />
+        </el-form-item>
+        <el-form-item label="中文费项" required>
+          <el-input v-model="addForm.feeNameCn" placeholder="如：码头操作费" />
+        </el-form-item>
+        <el-form-item label="英文费项">
+          <el-input v-model="addForm.feeNameEn" placeholder="如：THC" />
+        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="货币" label-width="70px">
+              <el-select v-model="addForm.currency" filterable>
+                <el-option v-for="c in currencies" :key="c" :label="c" :value="c" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="直客金额" label-width="80px">
+              <el-input v-model="addForm.amountDirect" placeholder="0.00" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="直客单位" label-width="70px">
+              <el-select v-model="addForm.unitDirect" filterable>
+                <el-option v-for="u in units" :key="u" :label="u" :value="u" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="同行金额" label-width="80px">
+              <el-input v-model="addForm.amountCoload" placeholder="0.00" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="同行单位" label-width="90px">
+          <el-select v-model="addForm.unitCoload" filterable style="width:100%">
+            <el-option v-for="u in units" :key="u" :label="u" :value="u" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="addForm.remarks" type="textarea" :rows="2" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="addVisible = false">取消</el-button>
+        <el-button type="primary" :loading="adding" @click="handleAdd">添加</el-button>
+      </template>
+    </el-dialog>
   </el-card>
 </template>
 
@@ -126,10 +185,19 @@ import { Ship, Download } from '@element-plus/icons-vue'
 import { portChargeApi } from '@/api'
 
 const destinations = ref([])
+const filteredDestinations = ref([])
 const selectedDest = ref('')
+const regionFilter = ref('')
 const tableData = ref([])
 const loading = ref(false)
 const destLoading = ref(false)
+const adding = ref(false)
+const addVisible = ref(false)
+const addForm = reactive({
+  destination: '', feeNameCn: '', feeNameEn: '', currency: 'USD',
+  amountDirect: '', unitDirect: 'WM',
+  amountCoload: '', unitCoload: 'WM', remarks: ''
+})
 const editingId = ref(null)
 const editForm = reactive({
   feeNameCn: '', feeNameEn: '', currency: '',
@@ -213,7 +281,15 @@ const loadDests = async () => {
   try {
     const res = await portChargeApi.destinations()
     destinations.value = res.data
+    filteredDestinations.value = res.data
   } finally { destLoading.value = false }
+}
+
+const filterDestinations = () => {
+  const kw = regionFilter.value.toLowerCase()
+  filteredDestinations.value = kw
+    ? destinations.value.filter(d => d.toLowerCase().includes(kw))
+    : destinations.value
 }
 
 const loadData = async () => {
@@ -273,6 +349,42 @@ const handleDelete = async (id) => {
     loadData()
   } catch (e) {
     ElMessage.error('删除失败')
+  }
+}
+
+const openAdd = () => {
+  addForm.destination = selectedDest.value
+  addForm.feeNameCn = ''; addForm.feeNameEn = ''
+  addForm.currency = 'USD'; addForm.amountDirect = ''
+  addForm.unitDirect = 'WM'; addForm.amountCoload = ''
+  addForm.unitCoload = 'WM'; addForm.remarks = ''
+  addVisible.value = true
+}
+
+const handleAdd = async () => {
+  if (!addForm.feeNameCn) return ElMessage.warning('请输入中文费项')
+  adding.value = true
+  try {
+    await portChargeApi.create({
+      destination: addForm.destination,
+      feeNameCn: addForm.feeNameCn,
+      feeNameEn: addForm.feeNameEn || null,
+      currency: addForm.currency || 'USD',
+      amountDirect: addForm.amountDirect ? Number(addForm.amountDirect) : null,
+      amountDirectRaw: addForm.amountDirect || null,
+      unitDirect: addForm.unitDirect || null,
+      amountCoload: addForm.amountCoload ? Number(addForm.amountCoload) : null,
+      amountColoadRaw: addForm.amountCoload || null,
+      unitCoload: addForm.unitCoload || null,
+      remarks: addForm.remarks || null
+    })
+    ElMessage.success('添加成功')
+    addVisible.value = false
+    loadData()
+  } catch {
+    ElMessage.error('添加失败')
+  } finally {
+    adding.value = false
   }
 }
 

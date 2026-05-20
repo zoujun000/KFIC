@@ -275,6 +275,11 @@ public class DestPortChargeServiceImpl implements DestPortChargeService {
     }
 
     @Override
+    public void createCharge(DestPortCharge charge) {
+        chargeMapper.insert(charge);
+    }
+
+    @Override
     public void updateCharge(DestPortCharge charge) {
         if (charge.getId() == null) throw new BusinessException("ID不能为空");
         DestPortCharge exist = chargeMapper.selectById(charge.getId());

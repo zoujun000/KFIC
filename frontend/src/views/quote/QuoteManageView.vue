@@ -11,9 +11,15 @@
 
     <!-- 搜索 -->
     <el-form :inline="true" class="search-bar">
+      <el-form-item label="国家/地区">
+        <el-select v-model="selectedCountry" placeholder="全部国家" clearable filterable
+          style="width:160px" @change="onCountryChange" :loading="countryLoading">
+          <el-option v-for="c in countries" :key="c" :label="c" :value="c" />
+        </el-select>
+      </el-form-item>
       <el-form-item label="目的港">
         <el-select v-model="selectedDest" placeholder="选择或输入目的港" filterable clearable
-          style="width:320px" @change="loadData" :loading="destLoading">
+          style="width:280px" @change="loadData" :loading="destLoading">
           <el-option v-for="d in destinations" :key="d" :label="d" :value="d" />
         </el-select>
       </el-form-item>
@@ -193,6 +199,9 @@ import { quoteApi } from '@/api'
 
 const destinations = ref([])
 const selectedDest = ref('')
+const countries = ref([])
+const selectedCountry = ref('')
+const countryLoading = ref(false)
 const tableData = ref([])
 const loading = ref(false)
 const destLoading = ref(false)
@@ -208,13 +217,26 @@ const editForm = reactive({
   validFrom: '', validTo: ''
 })
 
-// 加载目的港列表
-const loadDests = async () => {
-  destLoading.value = true
+// 加载国家列表
+const loadCountries = async () => {
+  countryLoading.value = true
   try {
-    const res = await quoteApi.destinations('')
+    const res = await quoteApi.countries()
+    countries.value = res.data
+  } finally { countryLoading.value = false }
+}
+
+// 加载目的港列表
+const loadDests = async (country) => {
+  destLoading.value = true; selectedDest.value = ''
+  try {
+    const res = await quoteApi.destinations(country || '')
     destinations.value = res.data
   } finally { destLoading.value = false }
+}
+
+const onCountryChange = (val) => {
+  loadDests(val || '')
 }
 
 // 查询
@@ -352,7 +374,7 @@ const generateExcel = (rows, subtitle) => {
   ElMessage.success('下载成功')
 }
 
-onMounted(loadDests)
+onMounted(() => { loadCountries(); loadDests() })
 </script>
 
 <style scoped>

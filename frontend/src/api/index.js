@@ -67,6 +67,7 @@ export const portChargeApi = {
   destinations: () => request.get('/port-charges/destinations'),
   logs: () => request.get('/port-charges/logs'),
   list: (destination) => request.get('/port-charges', { params: { destination } }),
+  create: (data) => request.post('/port-charges', data),
   update: (id, data) => request.put(`/port-charges/${id}`, data),
   delete: (id) => request.delete(`/port-charges/${id}`)
 }

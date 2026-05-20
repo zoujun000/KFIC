@@ -14,6 +14,7 @@ public interface DestPortChargeService {
     List<String> listDestinations();
     List<PortChargeUploadLog> uploadLogs();
     List<DestPortCharge> listByDestination(String destination);
+    void createCharge(DestPortCharge charge);
     void updateCharge(DestPortCharge charge);
     void deleteCharge(Long id);
     List<DestPortCharge> listAll();

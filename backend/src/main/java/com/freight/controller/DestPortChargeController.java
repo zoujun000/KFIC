@@ -74,6 +74,14 @@ public class DestPortChargeController {
         return Result.success();
     }
 
+    @Operation(summary = "新增目的港费用")
+    @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN','MAINTAINER')")
+    public Result<Void> create(@RequestBody DestPortCharge charge) {
+        chargeService.createCharge(charge);
+        return Result.success();
+    }
+
     @Operation(summary = "删除单条目的港费用")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','MAINTAINER')")

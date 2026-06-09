@@ -25,8 +25,8 @@ import java.util.UUID;
 @RequestMapping("/api/files")
 public class FileController {
 
-    // 营业执照存放路径
-    private static final String UPLOAD_DIR = System.getProperty("user.home") + "/Desktop/营业执照";
+    // 营业执照基础路径
+    private static final String BASE_DIR = System.getProperty("user.home") + "/Desktop";
 
     // 允许的图片类型
     private static final java.util.Set<String> ALLOWED_IMAGE_TYPES = java.util.Set.of(
@@ -34,7 +34,11 @@ public class FileController {
 
     @Operation(summary = "上传营业执照（支持图片和PDF）")
     @PostMapping("/upload/business-license")
-    public Result<String> uploadBusinessLicense(@RequestParam("file") MultipartFile file) {
+    public Result<String> uploadBusinessLicense(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "customerType", required = false, defaultValue = "DIRECT") String customerType,
+            @RequestParam(value = "companyName", required = false) String companyName) {
+
         if (file.isEmpty()) {
             return Result.error("文件不能为空");
         }
@@ -47,8 +51,18 @@ public class FileController {
         }
 
         try {
-            // 确保目录存在
-            File dir = new File(UPLOAD_DIR);
+            // 确定子目录: 直客营业执照 或 同行营业执照
+            String typeDir = "DIRECT".equals(customerType) ? "直客营业执照" : "同行营业执照";
+
+            // 公司名作为子文件夹（清理非法字符）
+            String safeCompanyName = sanitizeFolderName(companyName);
+            if (safeCompanyName == null || safeCompanyName.isEmpty()) {
+                safeCompanyName = "未分类";
+            }
+
+            // 目标路径: ~/Desktop/{直客营业执照|同行营业执照}/{公司名}/
+            Path targetDir = Paths.get(BASE_DIR, typeDir, safeCompanyName);
+            File dir = targetDir.toFile();
             if (!dir.exists()) {
                 dir.mkdirs();
             }
@@ -63,36 +77,70 @@ public class FileController {
             String newFileName = timestamp + "_" + UUID.randomUUID().toString().substring(0, 8) + ext;
 
             // 保存文件
-            Path targetPath = Paths.get(UPLOAD_DIR, newFileName);
+            Path targetPath = targetDir.resolve(newFileName);
             file.transferTo(targetPath.toFile());
 
-            return Result.success("上传成功", newFileName);
+            // 返回相对路径: 直客营业执照/公司名/文件名
+            String relativePath = typeDir + "/" + safeCompanyName + "/" + newFileName;
+            return Result.success("上传成功", relativePath);
+
         } catch (IOException e) {
             return Result.error("文件保存失败: " + e.getMessage());
         }
     }
 
     @Operation(summary = "查看营业执照照片")
-    @GetMapping("/photo/{filename}")
-    public ResponseEntity<Resource> getPhoto(@PathVariable String filename) {
-        Path filePath = Paths.get(UPLOAD_DIR, filename);
+    @GetMapping("/photo/{*filename}")
+    public ResponseEntity<Resource> getPhoto(@PathVariable("filename") String filename) {
+        // filename 可能是 "直客营业执照/JOJO/xxx.pdf" 格式的相对路径
+        Path filePath = Paths.get(BASE_DIR, filename);
         File file = filePath.toFile();
+
+        // 向后兼容：老格式仅文件名，尝试在直客营业执照和同行营业执照下查找
+        if (!file.exists() && !filename.contains("/")) {
+            String[] dirs = {"直客营业执照", "同行营业执照"};
+            for (String dir : dirs) {
+                Path searchDir = Paths.get(BASE_DIR, dir);
+                if (Files.exists(searchDir)) {
+                    try {
+                        java.util.Optional<Path> found = Files.walk(searchDir, 3)
+                                .filter(p -> p.getFileName().toString().equals(filename))
+                                .findFirst();
+                        if (found.isPresent()) {
+                            file = found.get().toFile();
+                            break;
+                        }
+                    } catch (IOException ignored) {}
+                }
+            }
+        }
 
         if (!file.exists()) {
             return ResponseEntity.notFound().build();
         }
 
         Resource resource = new FileSystemResource(file);
-        String contentType;
+        String contentTypeStr;
         try {
-            contentType = Files.probeContentType(filePath);
+            contentTypeStr = Files.probeContentType(filePath);
         } catch (IOException e) {
-            contentType = "application/octet-stream";
+            contentTypeStr = "application/octet-stream";
         }
 
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(contentType != null ? contentType : "image/jpeg"))
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType(contentTypeStr != null ? contentTypeStr : "image/jpeg"))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" + file.getName() + "\"")
                 .body(resource);
+    }
+
+    /**
+     * 清理公司名中不适合做文件夹名的字符
+     */
+    private String sanitizeFolderName(String name) {
+        if (name == null) return null;
+        // macOS: 不能有 : 和 /
+        // 同时去掉首尾空格
+        return name.replaceAll("[/:]", "_").trim();
     }
 }

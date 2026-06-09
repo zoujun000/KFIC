@@ -30,6 +30,10 @@ public class FreightOrderDTO {
     private String cargoName;
     private BigDecimal cargoWeight;
     private BigDecimal cargoVolume;
+    private Integer packageCount;
+    private String vesselVoyage;
+    private String shippingCompany;
+    private String containerSeal;
     private LocalDate etd;
     private LocalDate eta;
     private BigDecimal totalAmount;

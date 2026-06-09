@@ -73,6 +73,10 @@ public class FreightQuoteExcelVO {
     @ColumnWidth(18)
     private String carrier;
 
+    @ExcelProperty("船名航次")
+    @ColumnWidth(18)
+    private String vesselVoyage;
+
     @ExcelProperty("有效期从")
     @ColumnWidth(14)
     private LocalDate validFrom;

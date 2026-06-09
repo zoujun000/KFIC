@@ -33,6 +33,7 @@ public class FreightQuote {
     private String jiaoxinMotherVessel;
     private String transitTime;
     private String carrier;
+    private String vesselVoyage;
     private String remarks;
     private String portCode;
     private LocalDate validFrom;

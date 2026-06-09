@@ -32,6 +32,18 @@ public class FreightOrder {
 
     private BigDecimal cargoVolume;
 
+    /** 件数 */
+    private Integer packageCount;
+
+    /** 船名航次 */
+    private String vesselVoyage;
+
+    /** 船公司 */
+    private String shippingCompany;
+
+    /** 柜封号 */
+    private String containerSeal;
+
     private String status;
 
     private LocalDate etd;

@@ -28,7 +28,11 @@ export const orderApi = {
   update: (data) => request.put('/orders', data),
   updateStatus: (id, status) => request.put(`/orders/${id}/status`, null, { params: { status } }),
   delete: (id) => request.delete(`/orders/${id}`),
-  etaAlerts: () => request.get('/orders/eta-alerts')
+  etaAlerts: () => request.get('/orders/eta-alerts'),
+  uploadAttachments: (id, formData) => request.post(`/orders/${id}/attachments`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  getAttachments: (id) => request.get(`/orders/${id}/attachments`)
 }
 export const quoteApi = {
   upload: (formData) => request.post('/quotes/upload', formData, {

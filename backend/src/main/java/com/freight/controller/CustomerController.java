@@ -49,7 +49,7 @@ public class CustomerController {
 
     @Operation(summary = "删除客户")
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MAINTAINER','USER')")
     public Result<Void> delete(@PathVariable Long id) {
         customerService.delete(id);
         return Result.success();

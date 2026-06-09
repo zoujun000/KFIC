@@ -115,6 +115,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="carrier" label="船公司" width="110" show-overflow-tooltip />
+        <el-table-column prop="vesselVoyage" label="船名航次" width="120" show-overflow-tooltip />
         <el-table-column label="有效期" width="150">
           <template #default="{ row }">
             <span style="font-size:11px;color:#909399">{{ row.validFrom }} ~ {{ row.validTo }}</span>
@@ -194,6 +195,9 @@
         <el-form-item label="船公司">
           <el-input v-model="editForm.carrier" />
         </el-form-item>
+        <el-form-item label="船名航次">
+          <el-input v-model="editForm.vesselVoyage" />
+        </el-form-item>
         <el-form-item label="有效期从">
           <el-date-picker v-model="editForm.validFrom" type="date" value-format="YYYY-MM-DD" />
         </el-form-item>
@@ -247,7 +251,7 @@ const editForm = reactive({
   ofWuchong: '', wuchongFirstLeg: '', wuchongMotherVessel: '',
   ofBeisha: '', beishaFirstLeg: '', beishaMotherVessel: '',
   ofJiaoxin: '', jiaoxinFirstLeg: '', jiaoxinMotherVessel: '',
-  transitTime: '', carrier: '', remarks: '',
+  transitTime: '', carrier: '', vesselVoyage: '', remarks: '',
   validFrom: '', validTo: ''
 })
 
@@ -587,6 +591,7 @@ const openEditDialog = (row) => {
     jiaoxinMotherVessel: row.jiaoxinMotherVessel || '',
     transitTime: row.transitTime || '',
     carrier: row.carrier || '',
+    vesselVoyage: row.vesselVoyage || '',
     remarks: row.remarks || '',
     validFrom: row.validFrom || '',
     validTo: row.validTo || ''
@@ -630,14 +635,14 @@ const downloadExcel = () => {
     '乌冲OF', '乌冲头程', '乌冲大船',
     '北沙OF', '北沙头程', '北沙大船',
     '滘心OF', '滘心头程', '滘心大船',
-    '时效', '船公司', '有效期从', '有效期至', '备注'
+    '时效', '船公司', '船名航次', '有效期从', '有效期至', '备注'
   ]
   const fields = [
     'country', 'destination', 'portCode', 'volumeRange', 'via',
     'ofWuchong', 'wuchongFirstLeg', 'wuchongMotherVessel',
     'ofBeisha', 'beishaFirstLeg', 'beishaMotherVessel',
     'ofJiaoxin', 'jiaoxinFirstLeg', 'jiaoxinMotherVessel',
-    'transitTime', 'carrier', 'validFrom', 'validTo', 'remarks'
+    'transitTime', 'carrier', 'vesselVoyage', 'validFrom', 'validTo', 'remarks'
   ]
 
   // 生成 HTML 表格（Excel 可以直接打开）

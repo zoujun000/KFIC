@@ -32,6 +32,8 @@ public class Customer {
 
     private Integer status;
 
+    private String customerType;
+
     @TableLogic
     private Integer deleted;
 

@@ -7,7 +7,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.freight.common.exception.BusinessException;
 import com.freight.dto.FreightOrderDTO;
 import com.freight.dto.OrderQueryDTO;
+import com.freight.entity.Customer;
 import com.freight.entity.FreightOrder;
+import com.freight.mapper.CustomerMapper;
 import com.freight.mapper.FreightOrderMapper;
 import com.freight.service.FreightOrderService;
 import com.freight.util.SecurityUtil;
@@ -16,6 +18,11 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -24,6 +31,9 @@ import java.time.format.DateTimeFormatter;
 public class FreightOrderServiceImpl implements FreightOrderService {
 
     private final FreightOrderMapper orderMapper;
+    private final CustomerMapper customerMapper;
+
+    private static final String ATTACHMENT_ROOT = System.getProperty("user.home") + "/Desktop";
 
     @Override
     public IPage<FreightOrder> page(OrderQueryDTO query) {
@@ -40,7 +50,9 @@ public class FreightOrderServiceImpl implements FreightOrderService {
                 .eq(StringUtils.hasText(so), FreightOrder::getOrderSo, so)
                 .eq(query.getCustomerId() != null, FreightOrder::getCustomerId, query.getCustomerId())
                 .eq(StringUtils.hasText(query.getShipType()), FreightOrder::getShipType, query.getShipType())
-                .eq(StringUtils.hasText(query.getStatus()), FreightOrder::getStatus, query.getStatus());
+                .eq(StringUtils.hasText(query.getStatus()), FreightOrder::getStatus, query.getStatus())
+                .ge(query.getEtdStart() != null, FreightOrder::getEtd, query.getEtdStart())
+                .le(query.getEtdEnd() != null, FreightOrder::getEtd, query.getEtdEnd());
 
         // 数据隔离：非管理员只能看自己的订单
         if (!SecurityUtil.isAdmin()) {
@@ -71,6 +83,9 @@ public class FreightOrderServiceImpl implements FreightOrderService {
         order.setStatus("进仓");
         order.setCreatedBy(SecurityUtil.getCurrentUserId());
         orderMapper.insert(order);
+
+        // 自动创建订单附件文件夹
+        createOrderDir(order);
     }
 
     @Override
@@ -103,13 +118,22 @@ public class FreightOrderServiceImpl implements FreightOrderService {
 
     @Override
     public void delete(Long id) {
-        LambdaQueryWrapper<FreightOrder> wrapper = new LambdaQueryWrapper<FreightOrder>()
-                .eq(FreightOrder::getId, id);
+        // 先查出订单信息（删前需要订单数据来定位文件夹）
+        FreightOrder order = orderMapper.selectById(id);
+        if (order == null) throw new BusinessException("订单不存在");
         if (!SecurityUtil.isAdmin()) {
-            wrapper.eq(FreightOrder::getCreatedBy, SecurityUtil.getCurrentUserId());
+            Long userId = SecurityUtil.getCurrentUserId();
+            if (userId != null && !userId.equals(order.getCreatedBy())) {
+                throw new BusinessException("无权删除该订单");
+            }
         }
-        int rows = orderMapper.delete(wrapper);
-        if (rows == 0) throw new BusinessException("订单不存在或无权删除");
+
+        // 先删文件
+        deleteOrderDir(order);
+
+        // 再删数据库记录
+        int rows = orderMapper.deleteById(id);
+        if (rows == 0) throw new BusinessException("删除失败");
     }
 
     @Override
@@ -125,5 +149,53 @@ public class FreightOrderServiceImpl implements FreightOrderService {
             if (userId != null) wrapper.eq(FreightOrder::getCreatedBy, userId);
         }
         return orderMapper.selectList(wrapper);
+    }
+
+    // ==================== 文件系统管理 ====================
+
+    /** 创建订单附件目录: ~/Desktop/{直客|同行}营业执照/{公司名}/{SO号}/ */
+    private void createOrderDir(FreightOrder order) {
+        try {
+            Customer customer = customerMapper.selectById(order.getCustomerId());
+            if (customer == null) return;
+
+            String licenseDir = "COLOAD".equalsIgnoreCase(customer.getCustomerType()) ? "同行营业执照" : "直客营业执照";
+            String companyName = sanitize(customer.getCompanyName());
+            String orderSo = sanitize(order.getOrderSo() != null ? order.getOrderSo() : order.getOrderNo());
+
+            Path dir = Paths.get(ATTACHMENT_ROOT, licenseDir, companyName, orderSo);
+            Files.createDirectories(dir);
+        } catch (IOException ignored) {
+            // 创建失败不阻断业务流程
+        }
+    }
+
+    /** 删除订单附件目录（递归删除所有文件） */
+    private void deleteOrderDir(FreightOrder order) {
+        try {
+            Customer customer = customerMapper.selectById(order.getCustomerId());
+            if (customer == null) return;
+
+            String licenseDir = "COLOAD".equalsIgnoreCase(customer.getCustomerType()) ? "同行营业执照" : "直客营业执照";
+            String companyName = sanitize(customer.getCompanyName());
+            String orderSo = sanitize(order.getOrderSo() != null ? order.getOrderSo() : order.getOrderNo());
+
+            Path dir = Paths.get(ATTACHMENT_ROOT, licenseDir, companyName, orderSo);
+            if (Files.exists(dir)) {
+                try (var stream = Files.walk(dir)) {
+                    stream.sorted(java.util.Comparator.reverseOrder())
+                            .map(Path::toFile)
+                            .forEach(File::delete);
+                }
+            }
+        } catch (IOException ignored) {
+            // 删除失败不阻断业务流程
+        }
+    }
+
+    /** 清理文件名中的非法字符 */
+    private String sanitize(String name) {
+        if (name == null) return "";
+        return name.replaceAll("[\\\\/:*?\"<>|]", "_");
     }
 }

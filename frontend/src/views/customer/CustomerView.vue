@@ -24,6 +24,7 @@
         <el-input v-model="keyword" placeholder="搜索公司名 / 联系人 / 微信 / WhatsApp" clearable
           :prefix-icon="Search" class="search-input" />
         <el-button type="primary" :icon="Plus" @click="openDialog()" round>新增客户</el-button>
+        <el-button :icon="Download" @click="exportCustomers" :loading="exporting" round>导出</el-button>
       </div>
 
       <!-- 表格 -->
@@ -173,6 +174,7 @@
               ref="uploadRef"
               :action="uploadAction"
               :headers="uploadHeaders"
+              :data="uploadData"
               :on-success="onUploadSuccess"
               :on-error="onUploadError"
               :before-upload="beforeUpload"
@@ -204,6 +206,14 @@
             </el-upload>
           </el-form-item>
           <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="客户类型">
+                <el-radio-group v-model="form.customerType">
+                  <el-radio-button value="direct">直客</el-radio-button>
+                  <el-radio-button value="coload">同行</el-radio-button>
+                </el-radio-group>
+              </el-form-item>
+            </el-col>
             <el-col :span="12">
               <el-form-item label="状态">
                 <el-switch v-model="form.status" :active-value="1" :inactive-value="0"
@@ -238,7 +248,7 @@ import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
   Search, Plus, Upload, Delete, Document, User, Edit, Phone,
-  ChatDotRound, ChatLineSquare, Message, Picture, Close
+  ChatDotRound, ChatLineSquare, Message, Picture, Close, Download
 } from '@element-plus/icons-vue'
 import { customerApi, fileApi } from '@/api'
 import { useDebounce } from '@/composables/useDebounce'
@@ -247,6 +257,7 @@ defineOptions({ name: 'Customers' })
 
 const loading = ref(false)
 const saving = ref(false)
+const exporting = ref(false)
 const tableData = ref([])
 const total = ref(0)
 const pageNum = ref(1)
@@ -269,10 +280,14 @@ const avatarColor = (name) => {
 
 const uploadAction = import.meta.env.DEV ? '/api/files/upload/business-license' : '/api/files/upload/business-license'
 const uploadHeaders = { Authorization: `Bearer ${localStorage.getItem('token')}` }
+const uploadData = computed(() => ({
+  customerType: form.customerType,
+  companyName: form.companyName
+}))
 
 const form = reactive({
   id: null, companyName: '', contactName: '', wechat: '', whatsapp: '',
-  phone: '', email: '', address: '', remark: '', status: 1, photoUrl: ''
+  phone: '', email: '', address: '', remark: '', status: 1, customerType: 'direct', photoUrl: ''
 })
 const rules = {
   companyName: [{ required: true, message: '请输入公司名称', trigger: 'blur' }],
@@ -318,7 +333,7 @@ const openDialog = (row = null) => {
   isEdit.value = !!row
   Object.assign(form, row ? { ...row } : {
     id: null, companyName: '', contactName: '', wechat: '', whatsapp: '',
-    phone: '', email: '', address: '', remark: '', status: 1, photoUrl: ''
+    phone: '', email: '', address: '', remark: '', status: 1, customerType: 'direct', photoUrl: ''
   })
   dialogVisible.value = true
 }
@@ -327,9 +342,9 @@ const handleSave = async () => {
   await formRef.value.validate()
   saving.value = true
   try {
-    const { id, companyName, contactName, wechat, whatsapp, phone, email, address, remark, status, photoUrl } = form
-    if (isEdit.value) await customerApi.update({ id, companyName, contactName, wechat, whatsapp, phone, email, address, remark, status, photoUrl })
-    else await customerApi.save({ companyName, contactName, wechat, whatsapp, phone, email, address, remark, status, photoUrl })
+    const { id, companyName, contactName, wechat, whatsapp, phone, email, address, remark, status, customerType, photoUrl } = form
+    if (isEdit.value) await customerApi.update({ id, companyName, contactName, wechat, whatsapp, phone, email, address, remark, status, customerType, photoUrl })
+    else await customerApi.save({ companyName, contactName, wechat, whatsapp, phone, email, address, remark, status, customerType, photoUrl })
     ElMessage.success('保存成功')
     dialogVisible.value = false
     loadData()
@@ -348,6 +363,45 @@ watch(debouncedKeyword, () => {
   pageNum.value = 1
   loadData()
 })
+
+const exportCustomers = async () => {
+  exporting.value = true
+  try {
+    // 拉取全部客户数据
+    const res = await customerApi.page({ keyword: keyword.value, pageNum: 1, pageSize: 10000 })
+    const rows = res.data.records
+    if (!rows.length) { ElMessage.warning('没有数据可导出'); return }
+
+    const headers = ['公司名称', '联系人', '微信', 'WhatsApp', '电话', '邮箱', '地址', '客户类型', '状态', '创建时间', '备注']
+    const keys = ['companyName', 'contactName', 'wechat', 'whatsapp', 'phone', 'email', 'address', 'customerType', 'status', 'createTime', 'remark']
+    const typeMap = { direct: '直客', coload: '同行' }
+
+    const csvRows = [headers.join(',')]
+    for (const row of rows) {
+      csvRows.push(keys.map(k => {
+        let v = row[k] ?? ''
+        if (k === 'customerType') v = typeMap[v] || v
+        if (k === 'status') v = v === 1 ? '启用' : '禁用'
+        // CSV 转义：含逗号/引号/换行时用双引号包裹
+        v = String(v).replace(/"/g, '""')
+        if (v.includes(',') || v.includes('"') || v.includes('\n')) v = `"${v}"`
+        return v
+      }).join(','))
+    }
+
+    const bom = '\uFEFF'
+    const blob = new Blob([bom + csvRows.join('\n')], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `客户列表_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success(`已导出 ${rows.length} 条客户数据`)
+  } catch (e) {
+    ElMessage.error('导出失败: ' + (e.message || '请重试'))
+  } finally { exporting.value = false }
+}
 
 onMounted(loadData)
 </script>
@@ -442,7 +496,7 @@ onMounted(loadData)
   .stat-value { font-size: 24px; }
   .table-toolbar { flex-direction: column; gap: 10px; }
   .search-input { width: 100% !important; }
-  .table-toolbar .el-button { width: 100%; }
+  .table-toolbar .el-button { width: 48%; }
   .customer-cell .customer-avatar { width: 32px; height: 32px; font-size: 14px; }
   .customer-name { font-size: 13px; }
   :deep(.el-dialog) { width: 94vw !important; }

@@ -74,16 +74,10 @@
         </el-table-column>
         <el-table-column label="执照" width="100" align="center">
           <template #default="{ row }">
-            <template v-if="row.photoUrl">
-              <el-button v-if="isPdf(row.photoUrl)" link type="warning" size="small"
-                @click="openPdf(row.photoUrl)">
-                <el-icon><Document /></el-icon> PDF
-              </el-button>
-              <el-button v-else link type="primary" size="small"
-                @click="previewPhoto(row.photoUrl)">
-                <el-icon><Picture /></el-icon> 查看
-              </el-button>
-            </template>
+            <el-button v-if="row.photoUrl" link type="primary" size="small"
+              @click="viewLicense(row.photoUrl)">
+              <el-icon><Document /></el-icon> 查看
+            </el-button>
             <span v-else class="text-muted" style="font-size:12px">—</span>
           </template>
         </el-table-column>
@@ -234,12 +228,7 @@
       </template>
     </el-dialog>
 
-    <!-- 图片预览 -->
-    <el-dialog v-model="photoPreviewVisible" title="营业执照" width="600px" append-to-body>
-      <div class="preview-wrap">
-        <el-image :src="previewPhotoUrl" fit="contain" style="max-width:100%;max-height:70vh" />
-      </div>
-    </el-dialog>
+
   </div>
 </template>
 
@@ -248,7 +237,7 @@ import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
   Search, Plus, Upload, Delete, Document, User, Edit, Phone,
-  ChatDotRound, ChatLineSquare, Message, Picture, Close, Download
+  ChatDotRound, ChatLineSquare, Message, Close, Download
 } from '@element-plus/icons-vue'
 import { customerApi, fileApi } from '@/api'
 import { useDebounce } from '@/composables/useDebounce'
@@ -267,8 +256,6 @@ const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref()
 const uploadRef = ref()
-const photoPreviewVisible = ref(false)
-const previewPhotoUrl = ref('')
 
 const activeCount = computed(() => tableData.value.filter(c => c.status === 1).length)
 
@@ -279,7 +266,7 @@ const avatarColor = (name) => {
 }
 
 const uploadAction = import.meta.env.DEV ? '/api/files/upload/business-license' : '/api/files/upload/business-license'
-const uploadHeaders = { Authorization: `Bearer ${localStorage.getItem('token')}` }
+const uploadHeaders = computed(() => ({ Authorization: `Bearer ${localStorage.getItem('accessToken')}` }))
 const uploadData = computed(() => ({
   customerType: form.customerType,
   companyName: form.companyName
@@ -307,18 +294,17 @@ const beforeUpload = (file) => {
 const isPdf = (filename) => filename?.toLowerCase().endsWith('.pdf')
 
 const onUploadSuccess = (res) => {
-  if (res.code === 200) { form.photoUrl = res.data; ElMessage.success('上传成功') }
-  else ElMessage.error(res.message || '上传失败')
+  console.log('上传响应:', res, typeof res)
+  // el-upload 可能返回字符串或对象，兼容处理
+  const data = typeof res === 'string' ? JSON.parse(res) : res
+  if (data.code === 200) { form.photoUrl = data.data; ElMessage.success('上传成功') }
+  else ElMessage.error(data.message || '上传失败')
 }
 const onUploadError = () => ElMessage.error('上传失败')
 
 const removePhoto = () => { form.photoUrl = '' }
 
-const previewPhoto = (filename) => {
-  previewPhotoUrl.value = fileApi.getPhotoUrl(filename)
-  photoPreviewVisible.value = true
-}
-const openPdf = (filename) => window.open(fileApi.getPhotoUrl(filename), '_blank')
+const viewLicense = (filename) => window.open(fileApi.getPhotoUrl(filename), '_blank')
 
 const loadData = async () => {
   loading.value = true
@@ -488,7 +474,6 @@ onMounted(loadData)
   padding: 10px 16px; color: #e6a23c; font-size: 13px;
 }
 .photo-remove { position: absolute; top: -10px; right: -10px; }
-.preview-wrap { text-align: center; }
 
 /* ── 移动端 ── */
 @media (max-width: 768px) {

@@ -3,6 +3,7 @@ import request from '@/utils/request'
 // 认证
 export const authApi = {
   login: (data) => request.post('/auth/login', data),
+  refresh: (data) => request.post('/auth/refresh', data),
   register: (data) => request.post('/auth/register', data)
 }
 
@@ -32,7 +33,8 @@ export const orderApi = {
   uploadAttachments: (id, formData) => request.post(`/orders/${id}/attachments`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
-  getAttachments: (id) => request.get(`/orders/${id}/attachments`)
+  getAttachments: (id) => request.get(`/orders/${id}/attachments`),
+  downloadAttachment: (id, filename) => request.get(`/orders/${id}/attachments/${encodeURIComponent(filename)}`, { responseType: 'blob' })
 }
 export const quoteApi = {
   upload: (formData) => request.post('/quotes/upload', formData, {
@@ -43,6 +45,7 @@ export const quoteApi = {
   destinations: (country) => request.get('/quotes/destinations', { params: { country } }),
   byDestination: (destination) => request.get('/quotes/by-destination', { params: { destination } }),
   byPortCode: (portCode) => request.get('/quotes/by-port-code', { params: { portCode } }),
+  create: (data) => request.post('/quotes', data),
   update: (id, data) => request.put(`/quotes/${id}`, data),
   delete: (id) => request.delete(`/quotes/${id}`),
   logs: () => request.get('/quotes/logs')
@@ -60,7 +63,10 @@ export const fileApi = {
   uploadBusinessLicense: (formData) => request.post('/files/upload/business-license', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
-  getPhotoUrl: (filename) => `/api/files/photo/${filename}`
+  getPhotoUrl: (filename) => {
+    const safePath = filename.split('/').map(encodeURIComponent).join('/')
+    return `/api/files/photo/${safePath}?token=${localStorage.getItem('accessToken') || ''}`
+  }
 }
 
 export const portChargeApi = {
@@ -74,7 +80,8 @@ export const portChargeApi = {
   list: (destination) => request.get('/port-charges', { params: { destination } }),
   create: (data) => request.post('/port-charges', data),
   update: (id, data) => request.put(`/port-charges/${id}`, data),
-  delete: (id) => request.delete(`/port-charges/${id}`)
+  delete: (id) => request.delete(`/port-charges/${id}`),
+  addDestination: (country, destination) => request.post('/port-charges/add-destination', null, { params: { country, destination } })
 }
 
 // 日志

@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @Tag(name = "客户管理")
 @RestController
 @RequestMapping("/api/customers")
@@ -22,13 +24,21 @@ public class CustomerController {
     @GetMapping
     public Result<IPage<Customer>> page(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) String customerType,
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
-        return Result.success(customerService.page(keyword, pageNum, pageSize));
+        return Result.success(customerService.page(keyword, status, customerType, pageNum, pageSize));
+    }
+
+    @Operation(summary = "客户统计")
+    @GetMapping("/stats")
+    public Result<Map<String, Long>> stats() {
+        return Result.success(customerService.getStats());
     }
 
     @Operation(summary = "查询客户详情")
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     public Result<Customer> getById(@PathVariable Long id) {
         return Result.success(customerService.getById(id));
     }
@@ -48,7 +58,7 @@ public class CustomerController {
     }
 
     @Operation(summary = "删除客户")
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:\\d+}")
     @PreAuthorize("hasAnyRole('ADMIN','MAINTAINER','USER')")
     public Result<Void> delete(@PathVariable Long id) {
         customerService.delete(id);

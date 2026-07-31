@@ -199,6 +199,14 @@ public class QuoteServiceImpl implements QuoteService {
     }
 
     @Override
+    public void createQuote(FreightQuote quote) {
+        if (quote.getSourceSheet() == null || quote.getSourceSheet().isBlank()) {
+            quote.setSourceSheet("手动新增");
+        }
+        quoteMapper.insert(quote);
+    }
+
+    @Override
     public void updateQuote(FreightQuote quote) {
         if (quote.getId() == null) throw new BusinessException("ID不能为空");
         FreightQuote exist = quoteMapper.selectById(quote.getId());

@@ -52,6 +52,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (StringUtils.hasText(bearer) && bearer.startsWith("Bearer ")) {
             return bearer.substring(7);
         }
+        // 营业执照图片由浏览器直接加载（<img>/window.open），无法携带 Authorization 头，
+        // 仅对该接口允许通过 query 参数 token 鉴权
+        if (request.getRequestURI().startsWith("/api/files/photo/")) {
+            String queryToken = request.getParameter("token");
+            if (StringUtils.hasText(queryToken)) {
+                return queryToken;
+            }
+        }
         return null;
     }
 }

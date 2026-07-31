@@ -10,6 +10,8 @@ public class OrderQueryDTO {
     private Long customerId;
     private String shipType;
     private String status;
+    /** 多选状态，逗号分隔 */
+    private String statuses;
     /** 由后端自动注入，前端无需传 */
     private Long createdBy;
     /** ETD 起始日期 */

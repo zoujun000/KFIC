@@ -96,6 +96,14 @@ public class DestPortChargeController {
         return Result.success();
     }
 
+    @Operation(summary = "添加目的港（新建港口记录）")
+    @PostMapping("/add-destination")
+    @PreAuthorize("hasAnyRole('ADMIN','MAINTAINER')")
+    public Result<Void> addDestination(@RequestParam String country, @RequestParam String destination) {
+        chargeService.addDestination(country, destination);
+        return Result.success();
+    }
+
     @Operation(summary = "导出全部目的港费用为Excel(.xlsx)")
     @GetMapping("/export")
     public void exportExcel(HttpServletResponse response) throws IOException {

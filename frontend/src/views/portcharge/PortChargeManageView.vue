@@ -6,6 +6,7 @@
           <el-icon color="#67c23a"><Ship /></el-icon>
           目的港费用管理
         </span>
+        <el-button type="primary" size="small" @click="openAddDest">+ 添加目的港</el-button>
       </div>
     </template>
 
@@ -179,6 +180,25 @@
         <el-button type="primary" :loading="adding" @click="handleAdd">添加</el-button>
       </template>
     </el-dialog>
+
+    <!-- 添加目的港弹窗 -->
+    <el-dialog v-model="addDestVisible" title="添加目的港" width="480px" @closed="resetAddDest">
+      <el-form :model="addDestForm" label-width="90px">
+        <el-form-item label="国家/地区">
+          <el-select v-model="addDestForm.country" placeholder="选择或输入国家/地区" filterable allow-create
+            style="width:100%">
+            <el-option v-for="c in countries" :key="c" :label="c" :value="c" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="目的港名称">
+          <el-input v-model="addDestForm.destination" placeholder="如：SHANGHAI" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="addDestVisible = false">取消</el-button>
+        <el-button type="primary" :loading="addingDest" @click="handleAddDest">添加</el-button>
+      </template>
+    </el-dialog>
   </el-card>
 </template>
 
@@ -187,6 +207,7 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Ship, Download } from '@element-plus/icons-vue'
 import { portChargeApi } from '@/api'
+import request from '@/utils/request'
 
 defineOptions({ name: 'PortChargeManage' })
 
@@ -497,16 +518,11 @@ const downloadExcel = () => {
     '目的港费用_' + selectedDest.value.replace(/[\\/:*?"<>|]/g, '_'))
 }
 
-// 下载全部数据库数据（直接请求后端生成Excel，避免cpolar截断大JSON）
+// 下载全部数据库数据（使用 axios 走 token 自动刷新）
 const downloadAll = async () => {
   try {
     ElMessage.info('正在导出全部数据...')
-    const token = localStorage.getItem('token')
-    const resp = await fetch('/api/port-charges/export', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    if (!resp.ok) throw new Error('导出失败')
-    const blob = await resp.blob()
+    const blob = await request.get('/port-charges/export', { responseType: 'blob' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -517,6 +533,49 @@ const downloadAll = async () => {
     URL.revokeObjectURL(url)
     ElMessage.success('下载成功')
   } catch { ElMessage.error('导出失败') }
+}
+
+// 添加目的港
+const addDestVisible = ref(false)
+const addingDest = ref(false)
+const addDestForm = reactive({ country: '', destination: '' })
+
+const openAddDest = () => {
+  addDestForm.country = ''
+  addDestForm.destination = ''
+  addDestVisible.value = true
+}
+
+const resetAddDest = () => {
+  addDestForm.country = ''
+  addDestForm.destination = ''
+}
+
+const handleAddDest = async () => {
+  if (!addDestForm.country.trim()) {
+    ElMessage.warning('请选择或输入国家/地区')
+    return
+  }
+  if (!addDestForm.destination.trim()) {
+    ElMessage.warning('请输入目的港名称')
+    return
+  }
+  addingDest.value = true
+  try {
+    await portChargeApi.addDestination(addDestForm.country.trim(), addDestForm.destination.trim())
+    ElMessage.success('目的港添加成功')
+    addDestVisible.value = false
+    // 刷新国家列表和目的港列表
+    loadCountries()
+    // 如果当前已选国家与新添加的匹配，刷新目的港
+    if (selectedCountry.value && selectedCountry.value === addDestForm.country.trim()) {
+      loadDests(selectedCountry.value)
+    }
+  } catch (e) {
+    ElMessage.error('添加失败：' + (e?.response?.data?.message || e?.message || '未知错误'))
+  } finally {
+    addingDest.value = false
+  }
 }
 
 onMounted(() => { loadCountries(); loadDests() })

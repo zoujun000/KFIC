@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.freight.common.result.Result;
 import com.freight.entity.SysUser;
 import com.freight.mapper.SysUserMapper;
+import com.freight.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Tag(name = "用户管理")
 @RestController
@@ -23,6 +25,8 @@ public class UserController {
 
     private final SysUserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+
+    private static final Set<String> VALID_ROLES = Set.of("ADMIN", "MAINTAINER", "USER");
 
     @Operation(summary = "用户列表")
     @GetMapping
@@ -37,9 +41,25 @@ public class UserController {
     @Operation(summary = "修改角色")
     @PutMapping("/{id}/role")
     public Result<Void> updateRole(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        // 1. 禁止修改自己
+        if (id.equals(SecurityUtil.getCurrentUserId())) {
+            return Result.error("不能修改自己的角色");
+        }
+
+        // 2. 角色白名单校验
+        String newRole = body.get("role");
+        if (newRole == null || !VALID_ROLES.contains(newRole)) {
+            return Result.error("无效的角色，只允许: " + String.join(", ", VALID_ROLES));
+        }
+
+        // 3. 非 ADMIN 不得授予 ADMIN 角色
+        if ("ADMIN".equals(newRole) && !SecurityUtil.isAdmin()) {
+            return Result.error("只有管理员才能授予管理员角色");
+        }
+
         SysUser user = userMapper.selectById(id);
         if (user == null) return Result.error("用户不存在");
-        user.setRole(body.get("role"));
+        user.setRole(newRole);
         userMapper.updateById(user);
         return Result.success();
     }
@@ -47,9 +67,24 @@ public class UserController {
     @Operation(summary = "修改状态")
     @PutMapping("/{id}/status")
     public Result<Void> updateStatus(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        // 1. 禁止修改自己
+        if (id.equals(SecurityUtil.getCurrentUserId())) {
+            return Result.error("不能修改自己的状态");
+        }
+
+        // 2. 状态值校验
+        Object statusObj = body.get("status");
+        if (!(statusObj instanceof Number)) {
+            return Result.error("status 必须是数字");
+        }
+        int newStatus = ((Number) statusObj).intValue();
+        if (newStatus != 0 && newStatus != 1) {
+            return Result.error("status 只能是 0（启用）或 1（禁用）");
+        }
+
         SysUser user = userMapper.selectById(id);
         if (user == null) return Result.error("用户不存在");
-        user.setStatus(((Number) body.get("status")).intValue());
+        user.setStatus(newStatus);
         userMapper.updateById(user);
         return Result.success();
     }

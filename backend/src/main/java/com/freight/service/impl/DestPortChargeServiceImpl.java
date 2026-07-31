@@ -231,8 +231,8 @@ public class DestPortChargeServiceImpl implements DestPortChargeService {
 
     @Override
     public List<String> listCountries() {
-        // 从报价表取国家列表
-        return quoteMapper.selectList(
+        // 合并报价表和费用表的国家列表
+        List<String> quoteCountries = quoteMapper.selectList(
             new LambdaQueryWrapper<FreightQuote>()
                 .select(FreightQuote::getCountry)
                 .eq(FreightQuote::getDeleted, 0)
@@ -241,6 +241,21 @@ public class DestPortChargeServiceImpl implements DestPortChargeService {
                 .orderByAsc(FreightQuote::getCountry)
         ).stream().map(FreightQuote::getCountry)
          .filter(StringUtils::hasText).distinct().toList();
+
+        List<String> chargeCountries = chargeMapper.selectList(
+            new LambdaQueryWrapper<DestPortCharge>()
+                .select(DestPortCharge::getCountry)
+                .eq(DestPortCharge::getDeleted, 0)
+                .isNotNull(DestPortCharge::getCountry)
+                .groupBy(DestPortCharge::getCountry)
+        ).stream().map(DestPortCharge::getCountry)
+         .filter(StringUtils::hasText).distinct().toList();
+
+        // 合并去重
+        List<String> all = new ArrayList<>();
+        all.addAll(quoteCountries);
+        all.addAll(chargeCountries);
+        return all.stream().distinct().sorted().toList();
     }
 
     @Override
@@ -256,6 +271,19 @@ public class DestPortChargeServiceImpl implements DestPortChargeService {
             ).stream().map(DestPortCharge::getDestination)
              .filter(StringUtils::hasText).distinct().toList();
         }
+
+        // 优先从费用表按 country 字段筛选
+        List<String> chargeDests = chargeMapper.selectList(
+            new LambdaQueryWrapper<DestPortCharge>()
+                .select(DestPortCharge::getDestination)
+                .eq(DestPortCharge::getDeleted, 0)
+                .eq(DestPortCharge::getCountry, country)
+                .groupBy(DestPortCharge::getDestination)
+                .orderByAsc(DestPortCharge::getDestination)
+        ).stream().map(DestPortCharge::getDestination)
+         .filter(StringUtils::hasText).distinct().toList();
+
+        if (!chargeDests.isEmpty()) return chargeDests;
 
         // 从报价表取该国家下的核心港名（去括号、去via、统一大写）
         java.util.Set<String> portCores = quoteMapper.selectList(
@@ -341,6 +369,29 @@ public class DestPortChargeServiceImpl implements DestPortChargeService {
     @Override
     public void deleteCharge(Long id) {
         chargeMapper.deleteById(id);
+    }
+
+    @Override
+    public void addDestination(String country, String destination) {
+        if (!StringUtils.hasText(country) || !StringUtils.hasText(destination)) {
+            throw new BusinessException("国家和目的港名称不能为空");
+        }
+        // 检查是否已存在
+        long count = chargeMapper.selectCount(
+            new LambdaQueryWrapper<DestPortCharge>()
+                .eq(DestPortCharge::getDeleted, 0)
+                .eq(DestPortCharge::getDestination, destination)
+        );
+        if (count > 0) {
+            throw new BusinessException("目的港 '" + destination + "' 已存在");
+        }
+        // 创建一个空的目的港记录（无费用明细）
+        DestPortCharge charge = new DestPortCharge();
+        charge.setCountry(country);
+        charge.setDestination(destination);
+        charge.setSourceSheet("手动添加");
+        charge.setSourceFile("手动添加");
+        chargeMapper.insert(charge);
     }
 
     @Override

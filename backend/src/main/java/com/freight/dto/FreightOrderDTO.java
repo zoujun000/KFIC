@@ -29,6 +29,7 @@ public class FreightOrderDTO {
 
     private String cargoName;
     private BigDecimal cargoWeight;
+    private BigDecimal chargeableWeight;
     private BigDecimal cargoVolume;
     private Integer packageCount;
     private String vesselVoyage;

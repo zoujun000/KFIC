@@ -6,12 +6,14 @@ import com.freight.dto.FreightOrderDTO;
 import com.freight.dto.OrderQueryDTO;
 import com.freight.entity.FreightOrder;
 import com.freight.service.FreightOrderService;
+import com.freight.service.WordPreviewService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -20,9 +22,11 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 
 @Tag(name = "订单管理")
 @RestController
@@ -31,6 +35,7 @@ import java.util.List;
 public class FreightOrderController {
 
     private final FreightOrderService orderService;
+    private final WordPreviewService wordPreviewService;
 
     @Operation(summary = "分页查询订单")
     @GetMapping
@@ -115,7 +120,34 @@ public class FreightOrderController {
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
-                .header(HttpHeaders.CONTENT_DISPOSITION, disposition + "; filename=\"" + filename + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.builder(disposition)
+                        .filename(filename, StandardCharsets.UTF_8)
+                        .build()
+                        .toString())
                 .body(resource);
+    }
+
+    @Operation(summary = "预览旧版 Word 附件")
+    @GetMapping("/{id}/attachments/{filename}/word-preview")
+    public ResponseEntity<byte[]> previewWordAttachment(@PathVariable Long id,
+                                                        @PathVariable String filename) {
+        if (!filename.toLowerCase(Locale.ROOT).endsWith(".doc")) {
+            return ResponseEntity.status(415).build();
+        }
+
+        Path filePath = orderService.getAttachmentFile(id, filename);
+        if (filePath == null) return ResponseEntity.notFound().build();
+
+        try {
+            byte[] html = wordPreviewService.convertDocToHtml(filePath);
+            return ResponseEntity.ok()
+                    .contentType(new MediaType("text", "html", StandardCharsets.UTF_8))
+                    .header("Content-Security-Policy",
+                            "default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:")
+                    .header("X-Content-Type-Options", "nosniff")
+                    .body(html);
+        } catch (IOException e) {
+            return ResponseEntity.unprocessableEntity().build();
+        }
     }
 }

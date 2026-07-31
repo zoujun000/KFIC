@@ -17,6 +17,8 @@ public class DestPortCharge {
     private String sourceSheet;
     private String destination;
     @TableField(updateStrategy = FieldStrategy.IGNORED)
+    private String country;
+    @TableField(updateStrategy = FieldStrategy.IGNORED)
     private String feeNameCn;
     @TableField(updateStrategy = FieldStrategy.IGNORED)
     private String feeNameEn;

@@ -2,6 +2,7 @@ package com.freight.controller;
 
 import com.freight.common.result.Result;
 import com.freight.dto.LoginDTO;
+import com.freight.dto.RefreshTokenDTO;
 import com.freight.dto.RegisterDTO;
 import com.freight.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,6 +25,12 @@ public class AuthController {
     @PostMapping("/login")
     public Result<Map<String, Object>> login(@Valid @RequestBody LoginDTO dto) {
         return Result.success(authService.login(dto));
+    }
+
+    @Operation(summary = "刷新 Token（免重新登录）")
+    @PostMapping("/refresh")
+    public Result<Map<String, Object>> refresh(@Valid @RequestBody RefreshTokenDTO dto) {
+        return Result.success(authService.refresh(dto));
     }
 
     @Operation(summary = "注册")

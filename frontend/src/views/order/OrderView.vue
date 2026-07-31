@@ -1,5 +1,5 @@
 <template>
-  <el-card>
+  <el-card shadow="never" class="main-card">
     <!-- 搜索栏 -->
     <el-form :inline="true" :model="query" class="search-form">
       <el-form-item label="SO号">
@@ -13,7 +13,7 @@
         </el-select>
       </el-form-item>
       <el-form-item label="状态">
-        <el-select v-model="query.status" placeholder="全部" clearable style="width:120px">
+        <el-select v-model="query.statuses" multiple placeholder="全部" clearable style="width:200px" collapse-tags>
           <el-option v-for="(label, key) in statusLabel" :key="key" :label="label" :value="key" />
         </el-select>
       </el-form-item>
@@ -25,25 +25,36 @@
       <el-form-item>
         <el-button type="primary" @click="loadData">查询</el-button>
         <el-button @click="resetQuery">重置</el-button>
-        <el-button :icon="Download" @click="exportOrders" :loading="exporting">导出</el-button>
       </el-form-item>
     </el-form>
 
     <div class="toolbar">
       <span></span>
-      <el-button type="primary" :icon="Plus" @click="openDialog()">新建订单</el-button>
+      <div>
+        <el-button :icon="Download" @click="exportOrders" :loading="exporting">导出</el-button>
+        <el-button type="primary" :icon="Plus" @click="openDialog()">新建订单</el-button>
+      </div>
     </div>
 
     <!-- 表格 -->
     <el-table :data="tableData" v-loading="loading" stripe style="margin-top:12px">
-      <el-table-column prop="orderSo" label="SO号" width="180" />
-      <el-table-column prop="shipType" label="运输方式" width="100">
+      <el-table-column prop="orderSo" label="SO号" width="180">
         <template #default="{ row }">
-          <el-tag :type="shipTypeTag[row.shipType]" size="small">{{ shipTypeLabel[row.shipType] }}</el-tag>
+          <el-button link type="primary" @click="showOrderDetail(row)">{{ row.orderSo }}</el-button>
         </template>
       </el-table-column>
-      <el-table-column prop="origin" label="起运地" />
-      <el-table-column prop="destination" label="目的地" />
+      <el-table-column label="客户" min-width="160" show-overflow-tooltip>
+        <template #default="{ row }">
+          {{ customerNameOf(row.customerId) }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="shipType" label="运输方式" width="120">
+        <template #default="{ row }">
+          <el-tag :type="shipTypeTag[row.shipType]" size="small">{{ shipTypeLabel[row.shipType] }}{{ row.tradeTerms ? ' ' + row.tradeTerms : '' }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="origin" label="起运港" />
+      <el-table-column prop="destination" label="目的港" />
       <el-table-column prop="cargoName" label="货物名称" />
       <el-table-column prop="vesselVoyage" label="船名航次" width="130" show-overflow-tooltip />
       <el-table-column prop="etd" label="ETD" width="110" />
@@ -53,24 +64,28 @@
           <el-tag :type="statusTag[row.status]" size="small">{{ statusLabel[row.status] }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="160" fixed="right">
+      <el-table-column label="操作" width="180" fixed="right" align="center">
         <template #default="{ row }">
-          <el-button link type="primary" size="small" @click="openDialog(row)">编辑</el-button>
-          <el-dropdown @command="(s) => handleStatusChange(row.id, s)" size="small">
-            <el-button link type="warning" size="small">状态</el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item v-for="(label, key) in statusLabel" :key="key" :command="key">
-                  {{ label }}
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-          <el-popconfirm title="确认删除？" @confirm="handleDelete(row.id)">
-            <template #reference>
-              <el-button link type="danger" size="small">删除</el-button>
-            </template>
-          </el-popconfirm>
+          <div class="action-group">
+            <el-button link type="primary" size="small" @click="openDialog(row)">编辑</el-button>
+            <el-dropdown @command="(s) => handleStatusChange(row.id, s)" size="small">
+              <el-button link type="warning" size="small">
+                状态 <el-icon class="dropdown-arrow"><ArrowDown /></el-icon>
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-for="(label, key) in statusLabel" :key="key" :command="key">
+                    {{ label }}
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+            <el-popconfirm title="确认删除？" confirm-button-text="删除" cancel-button-text="取消" @confirm="handleDelete(row.id)">
+              <template #reference>
+                <el-button link type="danger" size="small">删除</el-button>
+              </template>
+            </el-popconfirm>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -118,13 +133,26 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="起运地" prop="origin">
-              <el-input v-model="form.origin" placeholder="请输入起运地" />
+            <el-form-item label="起运港" prop="origin">
+              <el-select
+                v-model="form.origin"
+                filterable
+                allow-create
+                default-first-option
+                placeholder="请选择或输入起运港"
+                style="width: 100%"
+              >
+                <el-option label="广州乌冲" value="广州乌冲" />
+                <el-option label="广州滘心" value="广州滘心" />
+                <el-option label="广州南沙" value="广州南沙" />
+                <el-option label="深圳金运达" value="深圳金运达" />
+                <el-option label="深圳平湖仓" value="深圳平湖仓" />
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="目的地" prop="destination">
-              <el-input v-model="form.destination" placeholder="请输入目的地" />
+            <el-form-item label="目的港" prop="destination">
+              <el-input v-model="form.destination" placeholder="请输入目的港" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -132,19 +160,29 @@
               <el-input v-model="form.cargoName" placeholder="货物名称" />
             </el-form-item>
           </el-col>
-          <el-col :span="8">
-            <el-form-item label="重量(KG)" label-width="85px">
+          <el-col :span="12">
+            <el-form-item label="金额" prop="totalAmount">
+              <el-input v-model="form.totalAmount" placeholder="0.00" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="重量(KG)" prop="cargoWeight">
               <el-input v-model="form.cargoWeight" placeholder="0" />
             </el-form-item>
           </el-col>
-          <el-col :span="8">
-            <el-form-item label="体积(CBM)" label-width="85px">
+          <el-col :span="6">
+            <el-form-item label="收费重(KG)" prop="chargeableWeight">
+              <el-input v-model="form.chargeableWeight" placeholder="0" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="体积(CBM)" prop="cargoVolume">
               <el-input v-model="form.cargoVolume" placeholder="0.000" />
             </el-form-item>
           </el-col>
-          <el-col :span="8">
-            <el-form-item label="金额" label-width="60px">
-              <el-input v-model="form.totalAmount" placeholder="0.00" />
+          <el-col :span="6">
+            <el-form-item label="件数" prop="packageCount">
+              <el-input v-model="form.packageCount" placeholder="0" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -225,14 +263,191 @@
         <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 点击 SO 号后的订单控制台 -->
+    <el-drawer
+      v-model="detailVisible"
+      :title="null"
+      :show-close="false"
+      :lock-scroll="false"
+      size="760px"
+      direction="rtl"
+      class="order-detail-drawer"
+    >
+      <template #header="{ close }">
+        <div class="detail-drawer-header">
+          <button class="drawer-close" @click="close" aria-label="关闭订单详情">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </template>
+
+      <div class="shipment-dossier">
+        <template v-if="currentOrder">
+          <section class="dossier-hero" :class="`transport-${currentOrder.shipType || 'SEA'}`">
+            <div class="hero-grid"></div>
+            <div class="hero-topline">
+              <span class="dossier-kicker">物流订单 / {{ shipTypeLabel[currentOrder.shipType] || '货运' }}</span>
+              <span class="dossier-status"><i></i>{{ statusLabel[currentOrder.status] || currentOrder.status }}</span>
+            </div>
+            <div class="hero-title-row">
+              <div>
+                <p class="hero-label">SO NUMBER</p>
+                <h2>{{ currentOrder.orderSo || currentOrder.orderNo || '未编号订单' }}</h2>
+              </div>
+              <button class="copy-so" type="button" @click="copyOrderSo">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 9V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h4"/>
+                </svg>
+                复制 SO
+              </button>
+            </div>
+            <div class="hero-route" aria-label="运输路线">
+              <div><span>ORIGIN</span><strong>{{ currentOrder.origin || '待确认' }}</strong></div>
+              <div class="route-line"><span class="route-vehicle">{{ shipTypeIcon[currentOrder.shipType] || '•' }}</span><i></i></div>
+              <div class="route-destination"><span>DESTINATION</span><strong>{{ currentOrder.destination || '待确认' }}</strong></div>
+            </div>
+            <div class="hero-meta">
+              <span>客户 <b>{{ customerNameOf(currentOrder.customerId) }}</b></span>
+              <span>更新时间 <b>{{ formatDateTime(currentOrder.updateTime || currentOrder.createTime) }}</b></span>
+            </div>
+          </section>
+
+          <section class="progress-panel">
+            <div class="section-heading"><span>运输进度</span><small>当前节点：{{ statusLabel[currentOrder.status] || currentOrder.status }}</small></div>
+            <div class="shipment-steps">
+              <div v-for="(step, index) in shipmentSteps" :key="step.key" class="shipment-step" :class="{ done: index <= currentStatusIndex, active: index === currentStatusIndex }">
+                <span class="step-dot"><i v-if="index < currentStatusIndex">✓</i></span>
+                <strong>{{ step.label }}</strong>
+                <small>{{ step.note }}</small>
+              </div>
+            </div>
+          </section>
+
+          <div class="dossier-body">
+            <section class="detail-block schedule-block">
+              <div class="section-heading"><span>关键节点</span><small>计划时间</small></div>
+              <div class="schedule-grid">
+                <div class="schedule-cell"><span>ETD · 预计离港</span><strong>{{ currentOrder.etd || '待定' }}</strong></div>
+                <div class="schedule-cell"><span>ETA · 预计到港</span><strong>{{ currentOrder.eta || '待定' }}</strong></div>
+                <div class="schedule-cell"><span>贸易条款</span><strong>{{ currentOrder.tradeTerms || '—' }}</strong></div>
+                <div class="schedule-cell"><span>订单金额</span><strong class="amount-value">{{ currentOrder.totalAmount ? `¥ ${currentOrder.totalAmount}` : '—' }}</strong></div>
+              </div>
+            </section>
+
+            <section class="detail-block cargo-block">
+              <div class="section-heading"><span>货物摘要</span><small>{{ currentOrder.cargoName || '未填写货物名称' }}</small></div>
+              <div class="cargo-layout">
+                <div class="cargo-mark">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m4 7 8-4 8 4-8 4-8-4Z"/><path d="m4 7 8 4 8-4M4 7v10l8 4 8-4V7M12 11v10"/></svg>
+                </div>
+                <div class="cargo-stat"><span>重量</span><strong>{{ currentOrder.cargoWeight || '—' }}<em v-if="currentOrder.cargoWeight">KG</em></strong></div>
+                <div class="cargo-stat"><span>收费重</span><strong>{{ currentOrder.chargeableWeight || '—' }}<em v-if="currentOrder.chargeableWeight">KG</em></strong></div>
+                <div class="cargo-stat"><span>体积</span><strong>{{ currentOrder.cargoVolume || '—' }}<em v-if="currentOrder.cargoVolume">CBM</em></strong></div>
+                <div class="cargo-stat"><span>件数</span><strong>{{ currentOrder.packageCount || '—' }}<em v-if="currentOrder.packageCount">件</em></strong></div>
+              </div>
+            </section>
+
+            <section class="detail-block detail-facts">
+              <div class="section-heading"><span>承运与装箱</span><small>运输信息</small></div>
+              <dl>
+                <div><dt>运输方式</dt><dd><span class="transport-pill">{{ shipTypeIcon[currentOrder.shipType] }} {{ shipTypeLabel[currentOrder.shipType] || '—' }}</span></dd></div>
+                <div><dt>船名航次</dt><dd>{{ currentOrder.vesselVoyage || '待补充' }}</dd></div>
+                <div><dt>船公司</dt><dd>{{ currentOrder.shippingCompany || '待补充' }}</dd></div>
+                <div><dt>柜号 / 封号</dt><dd>{{ currentOrder.containerSeal || '待补充' }}</dd></div>
+              </dl>
+            </section>
+
+            <section v-if="currentOrder.remark" class="detail-block remark-block">
+              <div class="section-heading"><span>操作备注</span><small>内部信息</small></div>
+              <p>{{ currentOrder.remark }}</p>
+            </section>
+
+            <section class="detail-block attachment-block">
+              <div class="section-heading"><span>随附文件</span><small>{{ detailAttachments.length }} 个文件</small></div>
+              <div v-loading="attachLoading" element-loading-background="transparent" class="attachment-zone">
+                <div v-if="!attachLoading && detailAttachments.length" class="attachment-list">
+                  <button v-for="file in detailAttachments" :key="file" type="button" class="attachment-card" @click="previewDetailAttachment(file)">
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>
+                    <span>{{ file }}</span><b>打开 ↗</b>
+                  </button>
+                </div>
+                <div v-else-if="!attachLoading" class="attachment-empty">暂未上传附件</div>
+              </div>
+            </section>
+          </div>
+        </template>
+      </div>
+
+      <template #footer>
+        <div class="dossier-footer">
+          <span v-if="currentOrder">创建于 {{ formatDateTime(currentOrder.createTime) }}</span>
+          <el-button type="primary" @click="editCurrentOrder">编辑订单</el-button>
+        </div>
+      </template>
+    </el-drawer>
   </el-card>
+
+  <!-- Excel 在线预览弹窗 -->
+  <el-dialog v-model="excelPreviewVisible" :title="excelPreviewTitle" width="90vw" top="3vh" destroy-on-close
+    class="excel-preview-dialog" @closed="cleanupExcelPreview">
+    <div v-loading="excelPreviewLoading" element-loading-text="正在解析表格…" class="excel-preview-body">
+      <template v-if="excelPreviewSheets.length">
+        <div class="excel-sheet-tabs" role="tablist">
+          <button v-for="sheet in excelPreviewSheets" :key="sheet.name" type="button"
+            :class="['excel-sheet-tab', { active: sheet.name === excelPreviewActiveSheet }]"
+            @click="selectExcelSheet(sheet.name)">
+            {{ sheet.name }}
+          </button>
+        </div>
+        <div class="excel-table-wrap">
+          <table class="excel-table">
+            <tbody>
+              <tr v-for="(row, rowIndex) in excelPreviewRows" :key="rowIndex">
+                <th>{{ rowIndex + 1 }}</th>
+                <td v-for="(cell, cellIndex) in row" :key="cellIndex">{{ cell }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </template>
+      <el-empty v-else-if="!excelPreviewLoading" description="表格中没有可显示的数据" />
+    </div>
+    <template #footer>
+      <div class="excel-preview-footer">
+        <el-button @click="downloadExcelOriginal">下载原文件</el-button>
+        <el-button type="primary" @click="excelPreviewVisible = false">关闭</el-button>
+      </div>
+    </template>
+  </el-dialog>
+
+  <el-dialog v-model="wordPreviewVisible" :title="wordPreviewTitle" width="90vw" top="3vh" destroy-on-close
+    class="word-preview-dialog" @closed="cleanupWordPreview">
+    <div v-loading="wordPreviewLoading" element-loading-text="正在解析文档…" class="word-preview-body">
+      <VueOfficeDocx v-if="wordPreviewMode === 'docx' && wordPreviewSrc" :src="wordPreviewSrc"
+        @rendered="wordPreviewLoading = false" @error="onWordPreviewError" />
+      <iframe v-else-if="wordPreviewMode === 'doc' && wordPreviewSrc" :src="wordPreviewSrc"
+        :title="wordPreviewTitle" sandbox @load="wordPreviewLoading = false"></iframe>
+    </div>
+    <template #footer>
+      <div class="word-preview-footer">
+        <el-button @click="downloadWordOriginal">下载原文件</el-button>
+        <el-button type="primary" @click="wordPreviewVisible = false">关闭</el-button>
+      </div>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Plus, Download } from '@element-plus/icons-vue'
+import { Plus, Download, ArrowDown, Edit } from '@element-plus/icons-vue'
 import { orderApi, customerApi } from '@/api'
+import VueOfficeDocx from '@vue-office/docx'
+import '@vue-office/docx/lib/index.css'
+import * as XLSX from 'xlsx'
 
 defineOptions({ name: 'Orders' })
 
@@ -250,10 +465,51 @@ const uploading = ref(false)
 const attachments = ref([])
 const uploadFiles = ref([])
 
-const statusLabel = { '进仓': '进仓', '走船': '走船', '已到港': '已到港', '已提货': '已提货' }
-const statusTag = { '进仓': 'info', '走船': 'warning', '已到港': 'primary', '已提货': 'success' }
+// 订单详情抽屉
+const detailVisible = ref(false)
+const currentOrder = ref(null)
+const detailAttachments = ref([])
+
+// ── Excel 在线预览 ──
+const EXCEL_EXTS = ['.xls', '.xlsx', '.csv']
+const isExcelFile = (name) => EXCEL_EXTS.some(ext => name.toLowerCase().endsWith(ext))
+const excelPreviewVisible = ref(false)
+const excelPreviewLoading = ref(false)
+const excelPreviewTitle = ref('')
+const excelPreviewFilename = ref('')
+const excelPreviewOrderId = ref(null)
+const excelPreviewSheets = ref([])
+const excelPreviewActiveSheet = ref('')
+const excelPreviewRows = computed(() =>
+  excelPreviewSheets.value.find(sheet => sheet.name === excelPreviewActiveSheet.value)?.rows || []
+)
+const WORD_EXTS = ['.doc', '.docx']
+const isWordFile = (name) => WORD_EXTS.some(ext => name.toLowerCase().endsWith(ext))
+const wordPreviewVisible = ref(false)
+const wordPreviewLoading = ref(false)
+const wordPreviewSrc = ref(null)
+const wordPreviewMode = ref('')
+const wordPreviewTitle = ref('')
+const wordPreviewFilename = ref('')
+const wordPreviewOrderId = ref(null)
+const attachLoading = ref(false)
+
+const statusLabel = { '订舱': '订舱', '进仓': '进仓', '走船': '走船', '已到港': '已到港', '已提货': '已提货' }
+const statusTag = { '订舱': '', '进仓': 'info', '走船': 'warning', '已到港': 'primary', '已提货': 'success' }
 const shipTypeLabel = { SEA: '海运', AIR: '空运', LAND: '陆运' }
 const shipTypeTag = { SEA: 'primary', AIR: 'success', LAND: 'warning' }
+const shipTypeIcon = { SEA: '🚢', AIR: '✈️', LAND: '🚛' }
+const shipmentSteps = [
+  { key: '订舱', label: '订舱', note: '舱位确认' },
+  { key: '进仓', label: '进仓', note: '货物入仓' },
+  { key: '走船', label: '走船', note: '已启运' },
+  { key: '已到港', label: '到港', note: '目的港抵达' },
+  { key: '已提货', label: '提货', note: '交付完成' }
+]
+const currentStatusIndex = computed(() => {
+  const index = shipmentSteps.findIndex(step => step.key === currentOrder.value?.status)
+  return index === -1 ? 0 : index
+})
 
 const etdRange = ref([])
 const dateShortcuts = [
@@ -264,12 +520,12 @@ const dateShortcuts = [
   { text: '今年', value: () => { const d = new Date(); return [new Date(d.getFullYear(), 0, 1), new Date(d.getFullYear(), 11, 31)] } }
 ]
 
-const query = reactive({ orderSo: '', shipType: '', status: '', pageNum: 1, pageSize: 10 })
+const query = reactive({ orderSo: '', shipType: '', statuses: [], pageNum: 1, pageSize: 10 })
 
 const emptyForm = () => ({
   id: null, customerId: null, orderSo: '', tradeTerms: '', shipType: 'SEA',
   origin: '', destination: '', cargoName: '',
-  cargoWeight: '', cargoVolume: '', totalAmount: '', packageCount: '',
+  cargoWeight: '', chargeableWeight: '', cargoVolume: '', totalAmount: '', packageCount: '',
   vesselVoyage: '', shippingCompany: '', containerSeal: '',
   etd: '', eta: '', remark: ''
 })
@@ -279,13 +535,28 @@ const rules = {
   customerId: [{ required: true, message: '请选择客户', trigger: 'change' }],
   orderSo: [{ required: true, message: '请填写SO号', trigger: 'blur' }],
   shipType: [{ required: true, message: '请选择运输方式', trigger: 'change' }],
-  origin: [{ required: true, message: '请填写起运地', trigger: 'blur' }],
-  destination: [{ required: true, message: '请填写目的地', trigger: 'blur' }]
+  origin: [{ required: true, message: '请填写起运港', trigger: 'blur' }],
+  destination: [{ required: true, message: '请填写目的港', trigger: 'blur' }],
+  cargoWeight: [{ validator: numberValidator('重量'), trigger: 'blur' }],
+  chargeableWeight: [{ validator: numberValidator('收费重'), trigger: 'blur' }],
+  cargoVolume: [{ validator: numberValidator('体积'), trigger: 'blur' }],
+  totalAmount: [{ validator: numberValidator('金额'), trigger: 'blur' }]
+}
+
+// 数字校验：允许留空，但填了就必须是非负数字，避免提交到后端报 400
+function numberValidator(label) {
+  return (rule, value, callback) => {
+    if (value === '' || value === null || value === undefined) return callback()
+    const s = String(value).trim()
+    if (!/^\d*\.?\d+$/.test(s)) return callback(new Error(`${label}须为数字`))
+    callback()
+  }
 }
 
 const formatRow = (row) => ({
   ...row,
   cargoWeight: row.cargoWeight != null ? String(row.cargoWeight) : '',
+  chargeableWeight: row.chargeableWeight != null ? String(row.chargeableWeight) : '',
   cargoVolume: row.cargoVolume != null ? String(row.cargoVolume) : '',
   totalAmount: row.totalAmount != null ? String(row.totalAmount) : '',
   packageCount: row.packageCount != null ? String(row.packageCount) : '',
@@ -297,15 +568,17 @@ const formatRow = (row) => ({
 })
 
 const uploadHeaders = computed(() => ({
-  Authorization: 'Bearer ' + localStorage.getItem('token')
+  Authorization: 'Bearer ' + localStorage.getItem('accessToken')
 }))
 
 const loadData = async () => {
   loading.value = true
   try {
-    query.etdStart = etdRange.value?.[0] || null
-    query.etdEnd = etdRange.value?.[1] || null
-    const res = await orderApi.page(query)
+    const params = { ...query }
+    params.etdStart = etdRange.value?.[0] || null
+    params.etdEnd = etdRange.value?.[1] || null
+    params.statuses = Array.isArray(params.statuses) && params.statuses.length > 0 ? params.statuses.join(',') : ''
+    const res = await orderApi.page(params)
     tableData.value = res.data.records
     total.value = res.data.total
   } finally {
@@ -319,12 +592,13 @@ const exportOrders = async () => {
     const exportQuery = { ...query, pageNum: 1, pageSize: 10000 }
     exportQuery.etdStart = etdRange.value?.[0] || null
     exportQuery.etdEnd = etdRange.value?.[1] || null
+    exportQuery.statuses = Array.isArray(exportQuery.statuses) ? exportQuery.statuses.join(',') : ''
     const res = await orderApi.page(exportQuery)
     const rows = res.data.records
     if (!rows.length) { ElMessage.warning('没有数据可导出'); return }
 
-    const headers = ['SO号', '运输方式', '贸易方式', '起运地', '目的地', '货物名称', '件数', '重量(kg)', '体积(CBM)', '船名航次', 'ETD', 'ETA', '状态', '总金额', '备注', '创建时间']
-    const keys = ['orderSo', 'shipType', 'tradeTerms', 'origin', 'destination', 'cargoName', 'packageCount', 'cargoWeight', 'cargoVolume', 'vesselVoyage', 'etd', 'eta', 'status', 'totalAmount', 'remark', 'createTime']
+    const headers = ['SO号', '运输方式', '贸易方式', '起运港', '目的港', '货物名称', '件数', '重量(kg)', '收费重(kg)', '体积(CBM)', '船名航次', 'ETD', 'ETA', '状态', '总金额', '备注', '创建时间']
+    const keys = ['orderSo', 'shipType', 'tradeTerms', 'origin', 'destination', 'cargoName', 'packageCount', 'cargoWeight', 'chargeableWeight', 'cargoVolume', 'vesselVoyage', 'etd', 'eta', 'status', 'totalAmount', 'remark', 'createTime']
     const shipMap = { SEA: '海运', AIR: '空运', LAND: '陆运' }
 
     const csvRows = [headers.join(',')]
@@ -355,16 +629,23 @@ const exportOrders = async () => {
 
 const resetQuery = () => {
   etdRange.value = []
-  Object.assign(query, { orderSo: '', shipType: '', status: '', pageNum: 1 })
+  Object.assign(query, { orderSo: '', shipType: '', statuses: [], pageNum: 1 })
   loadData()
+}
+
+const customerNameOf = (id) => customers.value.find(c => c.id === id)?.companyName || '—'
+
+// 每次打开弹窗都拉一次最新客户，避免新建的客户不出现在下拉里
+const loadCustomers = async () => {
+  try {
+    const res = await customerApi.page({ pageSize: 999 })
+    customers.value = res.data.records
+  } catch { /* 加载失败保留旧列表 */ }
 }
 
 const openDialog = async (row = null) => {
   isEdit.value = !!row
-  if (!customers.value.length) {
-    const res = await customerApi.page({ pageSize: 999 })
-    customers.value = res.data.records
-  }
+  await loadCustomers()
   Object.assign(form, row ? formatRow(row) : emptyForm())
   uploadFiles.value = []
   attachments.value = []
@@ -398,12 +679,164 @@ const handleDelete = async (id) => {
   loadData()
 }
 
+// 订单详情
+const showOrderDetail = async (row) => {
+  if (detailVisible.value && currentOrder.value?.id === row.id) return
+
+  const orderId = row.id
+  currentOrder.value = { ...row }
+  detailAttachments.value = []
+  attachLoading.value = Boolean(orderId)
+
+  await nextTick()
+  detailVisible.value = true
+  if (!orderId) return
+
+  try {
+    const attachmentRes = await orderApi.getAttachments(orderId)
+    if (currentOrder.value?.id === orderId) {
+      detailAttachments.value = attachmentRes.data || []
+    }
+  } catch {
+    if (currentOrder.value?.id === orderId) detailAttachments.value = []
+  } finally {
+    if (currentOrder.value?.id === orderId) attachLoading.value = false
+  }
+}
+
+// 时间格式化：后端 LocalDateTime 默认序列化为 ISO 带 T（如 2026-07-28T09:33:07），
+// 统一转成 "yyyy-MM-dd HH:mm:ss" 显示。用字符串处理而非 new Date()，避免时区解析差异。
+const formatDateTime = (val) => {
+  if (val == null || val === '') return '—'
+  return String(val)
+    .replace('T', ' ')
+    .replace(/\.\d+/, '')          // 去掉小数秒（毫秒/微秒/纳秒）
+    .replace(/Z$/, '')            // 去掉 UTC 标记
+    .trim()
+}
+
+const copyOrderSo = async () => {
+  const so = currentOrder.value?.orderSo || currentOrder.value?.orderNo
+  if (!so) return
+  try {
+    await navigator.clipboard.writeText(so)
+    ElMessage.success('SO 号已复制')
+  } catch {
+    ElMessage.info(`SO 号：${so}`)
+  }
+}
+
+const editCurrentOrder = () => {
+  if (currentOrder.value) {
+    detailVisible.value = false
+    openDialog(currentOrder.value)
+  }
+}
+
+const previewDetailAttachment = async (filename) => {
+  if (!currentOrder.value?.id) return
+  if (isExcelFile(filename)) {
+    openExcelPreview(currentOrder.value.id, filename)
+  } else if (isWordFile(filename)) {
+    openWordPreview(currentOrder.value.id, filename)
+  } else {
+    try {
+      const blob = await orderApi.downloadAttachment(currentOrder.value.id, filename)
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+      setTimeout(() => URL.revokeObjectURL(url), 60000)
+    } catch { ElMessage.error('预览失败') }
+  }
+}
+
 const loadAttachments = async () => {
   if (!form.id) return
   try {
     const res = await orderApi.getAttachments(form.id)
     attachments.value = res.data || []
   } catch { attachments.value = [] }
+}
+
+const openExcelPreview = async (orderId, filename) => {
+  excelPreviewTitle.value = filename
+  excelPreviewFilename.value = filename
+  excelPreviewOrderId.value = orderId
+  excelPreviewSheets.value = []
+  excelPreviewActiveSheet.value = ''
+  excelPreviewLoading.value = true
+  excelPreviewVisible.value = true
+  try {
+    const blob = await orderApi.downloadAttachment(orderId, filename)
+    const workbook = XLSX.read(await blob.arrayBuffer(), { type: 'array', cellDates: true })
+    excelPreviewSheets.value = workbook.SheetNames.map((name) => ({
+      name,
+      rows: XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: '', raw: false })
+    }))
+    excelPreviewActiveSheet.value = workbook.SheetNames[0] || ''
+    excelPreviewLoading.value = false
+  } catch {
+    excelPreviewLoading.value = false
+    ElMessage.warning('表格解析失败，可尝试下载后用 Excel 打开')
+  }
+}
+const selectExcelSheet = (name) => { excelPreviewActiveSheet.value = name }
+const cleanupExcelPreview = () => {
+  excelPreviewSheets.value = []
+  excelPreviewActiveSheet.value = ''
+}
+const downloadExcelOriginal = async () => {
+  if (!excelPreviewOrderId.value || !excelPreviewFilename.value) return
+  try {
+    const blob = await orderApi.downloadAttachment(excelPreviewOrderId.value, excelPreviewFilename.value)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = excelPreviewFilename.value; a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  } catch { ElMessage.error('下载失败') }
+}
+
+const cleanupWordPreview = () => {
+  if (wordPreviewMode.value === 'doc' && typeof wordPreviewSrc.value === 'string') {
+    URL.revokeObjectURL(wordPreviewSrc.value)
+  }
+  wordPreviewSrc.value = null
+  wordPreviewMode.value = ''
+}
+const openWordPreview = async (orderId, filename) => {
+  cleanupWordPreview()
+  wordPreviewTitle.value = filename
+  wordPreviewFilename.value = filename
+  wordPreviewOrderId.value = orderId
+  wordPreviewLoading.value = true
+  wordPreviewVisible.value = true
+  try {
+    if (filename.toLowerCase().endsWith('.docx')) {
+      const blob = await orderApi.downloadAttachment(orderId, filename)
+      wordPreviewMode.value = 'docx'
+      wordPreviewSrc.value = await blob.arrayBuffer()
+    } else {
+      const blob = await orderApi.previewDocAttachment(orderId, filename)
+      wordPreviewMode.value = 'doc'
+      wordPreviewSrc.value = URL.createObjectURL(blob)
+    }
+  } catch {
+    wordPreviewLoading.value = false
+    ElMessage.error('Word 文档加载失败')
+  }
+}
+const onWordPreviewError = () => {
+  wordPreviewLoading.value = false
+  ElMessage.warning('Word 文档解析失败，可尝试下载原文件')
+}
+const downloadWordOriginal = async () => {
+  if (!wordPreviewOrderId.value || !wordPreviewFilename.value) return
+  try {
+    const blob = await orderApi.downloadAttachment(wordPreviewOrderId.value, wordPreviewFilename.value)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = wordPreviewFilename.value; a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  } catch { ElMessage.error('下载失败') }
 }
 
 const onUploadChange = (file) => {
@@ -426,34 +859,131 @@ const doUpload = async () => {
 }
 
 const previewAttachment = async (filename) => {
-  try {
-    const token = localStorage.getItem('token')
-    const resp = await fetch(`/api/orders/${form.id}/attachments/${encodeURIComponent(filename)}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    if (!resp.ok) throw new Error('加载失败')
-    const blob = await resp.blob()
-    const url = URL.createObjectURL(blob)
-    window.open(url, '_blank')
-    setTimeout(() => URL.revokeObjectURL(url), 60000)
-  } catch { ElMessage.error('预览失败') }
+  if (isExcelFile(filename)) {
+    openExcelPreview(form.id, filename)
+  } else if (isWordFile(filename)) {
+    openWordPreview(form.id, filename)
+  } else {
+    try {
+      const blob = await orderApi.downloadAttachment(form.id, filename)
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+      setTimeout(() => URL.revokeObjectURL(url), 60000)
+    } catch { ElMessage.error('预览失败') }
+  }
 }
 
-onMounted(loadData)
+onMounted(() => { loadData(); loadCustomers() })
 </script>
 
 <style scoped>
-.search-form { background: #fafafa; padding: 16px 16px 0; border-radius: 6px; margin-bottom: 12px; }
-.toolbar { display: flex; justify-content: flex-end; }
+.main-card { margin-bottom: 0; }
+.search-form :deep(.el-form-item) { margin-bottom: 0; }
+.toolbar { display: flex; justify-content: flex-end; margin-top: 12px; }
 .pagination { margin-top: 16px; justify-content: flex-end; }
 .order-form :deep(.el-input__inner) { font-size: 15px; }
 .order-form :deep(.el-select .el-input__inner) { font-size: 15px; }
 
+/* ── 订单详情：运输控制台 ── */
+.order-detail-drawer :deep(.el-drawer__header) { margin: 0; padding: 0; }
+.order-detail-drawer :deep(.el-drawer__body) { padding: 0; background: #f4f5f2; }
+.order-detail-drawer :deep(.el-drawer__footer) { padding: 12px 22px; border-top: 1px solid #dce1dc; background: #fff; }
+.detail-drawer-header { display: flex; align-items: center; justify-content: flex-end; width: 100%; height: 48px; padding: 0 14px; background: transparent; }
+.drawer-close { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid #cfd6d0; border-radius: 50%; background: #fff; color: #51605b; cursor: pointer; transition: .2s ease; }
+.drawer-close:hover { background: #102a2c; border-color: #102a2c; color: #d7fa77; transform: rotate(90deg); }
+.shipment-dossier { min-height: 100%; color: #1e3633; font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+.dossier-hero { position: relative; overflow: hidden; padding: 26px 30px 22px; color: #f7fbf8; background: #173f3d; }
+.dossier-hero.transport-AIR { background: #20486a; }
+.dossier-hero.transport-LAND { background: #493d27; }
+.hero-grid { position: absolute; inset: 0; opacity: .18; background-image: linear-gradient(rgba(214,250,119,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(214,250,119,.5) 1px, transparent 1px); background-size: 34px 34px; mask-image: linear-gradient(90deg, transparent, #000 25%, #000); }
+.hero-topline, .hero-title-row, .hero-route, .hero-meta { position: relative; }
+.hero-topline, .hero-title-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.dossier-kicker, .hero-label, .hero-route span, .hero-meta { font: 700 10px/1.3 "SFMono-Regular", Consolas, monospace; letter-spacing: .12em; }
+.dossier-kicker { color: #b2cbc0; }
+.dossier-status { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; color: #d7fa77; border: 1px solid rgba(215,250,119,.45); border-radius: 99px; font-size: 12px; font-weight: 700; }
+.dossier-status i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 4px rgba(215,250,119,.12); }
+.hero-title-row { margin-top: 25px; }
+.hero-label { margin: 0 0 6px; color: #a9c0b6; }
+.hero-title-row h2 { margin: 0; color: #fff; font: 700 clamp(24px, 3vw, 34px)/1.1 "SFMono-Regular", Consolas, monospace; letter-spacing: -.055em; overflow-wrap: anywhere; }
+.copy-so { display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 9px 11px; border: 1px solid rgba(255,255,255,.35); border-radius: 7px; background: rgba(255,255,255,.06); color: #fff; cursor: pointer; font: 700 11px/1 "PingFang SC", sans-serif; transition: .2s ease; }
+.copy-so:hover { border-color: #d7fa77; background: #d7fa77; color: #183d3a; }
+.hero-route { display: grid; grid-template-columns: minmax(0,1fr) 92px minmax(0,1fr); align-items: center; gap: 8px; margin-top: 30px; }
+.hero-route span { display: block; margin-bottom: 7px; color: #b2cbc0; }
+.hero-route strong { display: block; overflow-wrap: anywhere; color: #fff; font-size: 17px; line-height: 1.32; }
+.route-destination { text-align: right; }
+.route-line { position: relative; height: 2px; background: repeating-linear-gradient(90deg, #d7fa77 0 7px, transparent 7px 12px); }
+.route-line::after { content: ''; position: absolute; right: -1px; top: -4px; border-width: 5px 0 5px 7px; border-style: solid; border-color: transparent transparent transparent #d7fa77; }
+.route-vehicle { position: absolute; left: 50%; top: 50%; z-index: 1; display: grid !important; place-items: center; width: 29px; height: 29px; margin: 0 !important; border: 1px solid #d7fa77; border-radius: 50%; background: #173f3d; color: #fff !important; font-size: 14px !important; letter-spacing: 0 !important; transform: translate(-50%, -50%); }
+.hero-meta { display: flex; flex-wrap: wrap; gap: 14px 25px; margin-top: 27px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.17); color: #a9c0b6; letter-spacing: .04em; font-size: 11px; }
+.hero-meta b { margin-left: 6px; color: #f2f8f4; font-weight: 700; letter-spacing: 0; font-size: 13.5px; }
+.progress-panel { margin: 18px 22px 0; padding: 19px 20px 16px; border: 1px solid #dbe4dc; border-radius: 12px; background: #fff; box-shadow: 0 10px 24px rgba(22,51,45,.04); }
+.section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.section-heading > span { font-size: 14px; font-weight: 800; letter-spacing: -.02em; }
+.section-heading > small { color: #71847d; font-size: 11px; }
+.shipment-steps { display: grid; grid-template-columns: repeat(5, 1fr); }
+.shipment-step { position: relative; min-width: 0; padding-top: 27px; color: #94a49f; }
+.shipment-step::before { content: ''; position: absolute; top: 9px; left: 0; width: 100%; height: 2px; background: #e3e9e4; }
+.shipment-step:first-child::before { left: 50%; width: 50%; }
+.shipment-step:last-child::before { width: 50%; }
+.shipment-step.done::before { background: #8cad65; }
+.step-dot { position: absolute; top: 2px; left: 50%; z-index: 1; display: grid; place-items: center; width: 16px; height: 16px; border: 2px solid #e3e9e4; border-radius: 50%; background: #fff; font-size: 9px; transform: translateX(-50%); }
+.shipment-step.done .step-dot { border-color: #8cad65; background: #8cad65; color: #fff; }
+.shipment-step.active .step-dot { border-color: #214f4a; box-shadow: 0 0 0 4px #dff1c3; }
+.shipment-step strong, .shipment-step small { display: block; overflow: hidden; padding: 0 3px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.shipment-step strong { color: inherit; font-size: 12px; }
+.shipment-step small { margin-top: 3px; font-size: 10px; opacity: .78; }
+.shipment-step.active { color: #214f4a; }
+.dossier-body { padding: 18px 22px 30px; }
+.detail-block { margin-bottom: 14px; padding: 18px 20px; border: 1px solid #dbe4dc; border-radius: 12px; background: #fff; }
+.detail-block .section-heading { margin-bottom: 16px; }
+.schedule-grid { display: grid; grid-template-columns: repeat(4, 1fr); overflow: hidden; border: 1px solid #e5e9e4; border-radius: 8px; }
+.schedule-cell { min-width: 0; padding: 13px 12px; border-right: 1px solid #e5e9e4; background: #fbfcfa; }
+.schedule-cell:last-child { border-right: 0; }
+.schedule-cell span, .cargo-stat span { display: block; margin-bottom: 6px; color: #76847e; font-size: 10px; }
+.schedule-cell strong { display: block; overflow: hidden; color: #213b37; font: 700 13px/1.3 "SFMono-Regular", Consolas, monospace; text-overflow: ellipsis; white-space: nowrap; }
+.schedule-cell .amount-value { color: #c36d20; }
+.cargo-layout { display: grid; grid-template-columns: 54px repeat(4, 1fr); align-items: stretch; border-radius: 9px; background: #edf5eb; }
+.cargo-mark { display: grid; place-items: center; color: #2e5e54; background: #d7eace; }
+.cargo-stat { padding: 13px 14px; border-right: 1px solid #d7e5d2; }
+.cargo-stat:last-child { border: 0; }
+.cargo-stat strong { display: block; color: #173f3d; font: 800 18px/1.1 "SFMono-Regular", Consolas, monospace; letter-spacing: -.05em; }
+.cargo-stat em { margin-left: 4px; color: #60766d; font: 700 10px/1 "PingFang SC", sans-serif; letter-spacing: 0; }
+.detail-facts dl { display: grid; grid-template-columns: 1fr 1fr; gap: 0 26px; margin: 0; }
+.detail-facts dl > div { display: grid; grid-template-columns: 79px minmax(0,1fr); align-items: center; min-height: 42px; border-bottom: 1px solid #edf0ed; }
+.detail-facts dt { color: #788881; font-size: 12px; }
+.detail-facts dd { margin: 0; overflow-wrap: anywhere; color: #233d38; font-size: 13px; font-weight: 700; }
+.transport-pill { display: inline-block; padding: 4px 8px; border-radius: 5px; background: #edf4f1; color: #275d55; font-size: 12px; }
+.remark-block { border-color: #efd9b5; background: #fffdf7; }
+.remark-block p { margin: 0; white-space: pre-wrap; color: #69542e; font-size: 13px; line-height: 1.8; }
+.attachment-list { display: grid; gap: 8px; }
+.attachment-card { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; padding: 10px 11px; border: 1px solid #e0e7e1; border-radius: 8px; background: #fbfcfb; color: #34554d; cursor: pointer; text-align: left; transition: .18s ease; }
+.attachment-card:hover { border-color: #6a998a; background: #f0f8f3; transform: translateX(2px); }
+.attachment-card span { overflow: hidden; color: #28433d; font-size: 12px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.attachment-card b { color: #678279; font-size: 10px; font-weight: 700; }
+.attachment-empty { padding: 13px; border: 1px dashed #cdd8d0; border-radius: 8px; color: #7d8e86; text-align: center; font-size: 12px; }
+.dossier-footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.dossier-footer > span { color: #87948e; font-size: 11px; }
+.dossier-footer :deep(.el-button) { min-width: 110px; background: #194b45; border-color: #194b45; }
+.dossier-footer :deep(.el-button:hover) { background: #2a635a; border-color: #2a635a; }
+
+/* ── 操作栏 ── */
+.action-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.action-group .el-button + .el-button {
+  margin-left: 0;
+}
+.dropdown-arrow {
+  font-size: 10px;
+  margin-left: 2px;
+}
+
 /* ── 移动端适配 ── */
 @media (max-width: 768px) {
-  .search-form {
-    padding: 10px 10px 0;
-  }
+  .main-card :deep(.el-card__body) { padding: 12px; }
   :deep(.el-form--inline) {
     display: flex;
     flex-direction: column;
@@ -498,5 +1028,115 @@ onMounted(loadData)
   :deep(.el-dialog__body) {
     padding: 16px 10px;
   }
+
+  .dossier-hero { padding: 21px 18px 18px; }
+  .hero-title-row { align-items: flex-start; }
+  .hero-title-row h2 { font-size: 25px; }
+  .copy-so { padding: 8px; font-size: 0; }
+  .copy-so svg { width: 17px; height: 17px; }
+  .hero-route { grid-template-columns: minmax(0, 1fr) 55px minmax(0, 1fr); margin-top: 24px; }
+  .hero-route strong { font-size: 14px; }
+  .hero-meta { gap: 7px 14px; font-size: 10px; }
+  .hero-meta b { font-size: 12px; }
+  .progress-panel, .dossier-body { margin-left: 12px; margin-right: 12px; }
+  .progress-panel { padding: 17px 10px 14px; }
+  .dossier-body { padding: 14px 0 22px; }
+  .detail-block { padding: 16px 14px; }
+  .shipment-step strong { font-size: 11px; }
+  .shipment-step small { display: none; }
+  .schedule-grid { grid-template-columns: 1fr 1fr; }
+  .schedule-cell:nth-child(2) { border-right: 0; }
+  .schedule-cell:nth-child(-n+2) { border-bottom: 1px solid #e5e9e4; }
+  .cargo-layout { grid-template-columns: 45px repeat(4, 1fr); }
+  .cargo-stat { padding: 11px 8px; }
+  .cargo-stat strong { font-size: 14px; }
+  .detail-facts dl { grid-template-columns: 1fr; }
+  .detail-facts dl > div { grid-template-columns: 84px minmax(0, 1fr); }
+  .dossier-footer { padding: 0 2px; }
+}
+</style>
+
+<style>
+/* el-drawer 通过 teleport 渲染到 body，scoped 的 :deep 可能匹配不到，
+   这里用全局选择器兜底，确保删除标题栏后顶部不留默认间距 */
+.order-detail-drawer .el-drawer__header { margin: 0 !important; padding: 0 !important; }
+.order-detail-drawer .el-drawer__body {
+  padding: 0 !important;
+  scrollbar-gutter: stable;
+}
+.order-detail-drawer.el-drawer { transition-property: transform !important; }
+
+@media (max-width: 768px) {
+  .order-detail-drawer.el-drawer { width: 100vw !important; }
+}
+
+/* ── Excel 在线预览弹窗 ── */
+.excel-preview-dialog {
+  display: flex;
+  flex-direction: column;
+  height: 94vh;
+  margin-bottom: 0;
+}
+.excel-preview-dialog .el-dialog__header { flex: none; padding: 20px 24px 16px; }
+.excel-preview-dialog .el-dialog__body {
+  flex: 1;
+  min-height: 0;
+  padding: 0 24px;
+  overflow: hidden;
+}
+.excel-preview-dialog .el-dialog__footer { flex: none; padding: 16px 24px 20px; }
+.excel-preview-body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid #dcdfe6;
+  background: #fff;
+}
+.excel-sheet-tabs { display: flex; flex: none; gap: 2px; padding: 8px 10px 0; border-bottom: 1px solid #dcdfe6; overflow-x: auto; }
+.excel-sheet-tab { flex: none; max-width: 200px; overflow: hidden; padding: 7px 12px; border: 0; border-radius: 4px 4px 0 0; background: transparent; color: #606266; cursor: pointer; text-overflow: ellipsis; white-space: nowrap; }
+.excel-sheet-tab:hover { background: #f5f7fa; color: #409eff; }
+.excel-sheet-tab.active { background: #ecf5ff; color: #409eff; font-weight: 600; }
+.excel-table-wrap { flex: 1; min-height: 0; overflow: auto; }
+.excel-table { min-width: 100%; border-spacing: 0; border-collapse: separate; font-size: 13px; }
+.excel-table th, .excel-table td { min-width: 96px; max-width: 360px; padding: 7px 10px; border-right: 1px solid #ebeef5; border-bottom: 1px solid #ebeef5; color: #303133; text-align: left; vertical-align: top; white-space: pre-wrap; word-break: break-word; }
+.excel-table th { position: sticky; left: 0; z-index: 1; min-width: 44px; width: 44px; padding: 7px 0; background: #f5f7fa; color: #909399; text-align: center; font-weight: 500; }
+.excel-table tr:nth-child(even) td { background: #fafafa; }
+.excel-preview-footer { display: flex; justify-content: flex-end; gap: 10px; }
+
+.word-preview-dialog {
+  display: flex;
+  flex-direction: column;
+  height: 94vh;
+  margin-bottom: 0;
+}
+.word-preview-dialog .el-dialog__header { flex: none; padding: 20px 24px 16px; }
+.word-preview-dialog .el-dialog__body {
+  flex: 1;
+  min-height: 0;
+  padding: 0 24px;
+  overflow: hidden;
+}
+.word-preview-dialog .el-dialog__footer { flex: none; padding: 16px 24px 20px; }
+.word-preview-body {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid #dcdfe6;
+  background: #eef0f3;
+}
+.word-preview-body iframe { display: block; width: 100%; height: 100%; border: 0; background: #fff; }
+.word-preview-footer { display: flex; justify-content: flex-end; gap: 10px; }
+
+@media (max-width: 768px) {
+  .excel-preview-dialog,
+  .word-preview-dialog { width: 96vw !important; height: 96vh; margin-top: 2vh !important; }
+  .excel-preview-dialog .el-dialog__header,
+  .word-preview-dialog .el-dialog__header { padding: 14px 16px 12px; }
+  .excel-preview-dialog .el-dialog__body,
+  .word-preview-dialog .el-dialog__body { padding: 0 12px; }
+  .excel-preview-dialog .el-dialog__footer,
+  .word-preview-dialog .el-dialog__footer { padding: 12px 16px 14px; }
 }
 </style>

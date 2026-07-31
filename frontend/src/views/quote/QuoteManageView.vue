@@ -25,6 +25,7 @@
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="loadData" :disabled="!selectedDest">查询</el-button>
+        <el-button type="success" @click="openAdd">新增报价</el-button>
         <el-button type="success" :icon="Download" @click="downloadExcel" :disabled="tableData.length === 0">
           下载Excel
         </el-button>
@@ -79,8 +80,8 @@
       </el-empty>
     </div>
 
-    <!-- 编辑对话框 -->
-    <el-dialog v-model="editVisible" title="编辑报价" width="650px" destroy-on-close>
+    <!-- {{ isAdd ? '新增' : '编辑' }}报价对话框 -->
+    <el-dialog v-model="editVisible" :title="isAdd ? '新增报价' : '编辑报价'" width="650px" destroy-on-close>
       <el-form :model="editForm" label-width="100px">
         <el-row :gutter="16">
           <el-col :span="12">
@@ -200,6 +201,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Goods, Download } from '@element-plus/icons-vue'
 import { quoteApi } from '@/api'
+import request from '@/utils/request'
 
 defineOptions({ name: 'QuoteManage' })
 
@@ -214,6 +216,7 @@ const destLoading = ref(false)
 const saving = ref(false)
 const editVisible = ref(false)
 const editingId = ref(null)
+const isAdd = ref(false)
 const editForm = reactive({
   country: '', destination: '', volumeRange: '', via: '',
   ofWuchong: '', wuchongFirstLeg: '', wuchongMotherVessel: '',
@@ -255,8 +258,27 @@ const loadData = async () => {
   } finally { loading.value = false }
 }
 
+// 打开新增
+const openAdd = () => {
+  isAdd.value = true
+  editingId.value = null
+  // 预填国家 + 目的港
+  Object.assign(editForm, {
+    country: selectedCountry.value || '',
+    destination: selectedDest.value || '',
+    volumeRange: '', via: '',
+    ofWuchong: '', wuchongFirstLeg: '', wuchongMotherVessel: '',
+    ofBeisha: '', beishaFirstLeg: '', beishaMotherVessel: '',
+    ofJiaoxin: '', jiaoxinFirstLeg: '', jiaoxinMotherVessel: '',
+    transitTime: '', carrier: '', vesselVoyage: '', remarks: '',
+    validFrom: '', validTo: ''
+  })
+  editVisible.value = true
+}
+
 // 打开编辑
 const openEdit = (row) => {
+  isAdd.value = false
   editingId.value = row.id
   Object.assign(editForm, {
     country: row.country || '',
@@ -286,12 +308,19 @@ const openEdit = (row) => {
 const handleSave = async () => {
   saving.value = true
   try {
-    await quoteApi.update(editingId.value, { ...editForm })
-    ElMessage.success('保存成功')
+    if (isAdd.value) {
+      await quoteApi.create({ ...editForm })
+      ElMessage.success('新增成功')
+      // 刷新目的港下拉列表（新港口可能出现）
+      await loadDests(selectedCountry.value || '')
+    } else {
+      await quoteApi.update(editingId.value, { ...editForm })
+      ElMessage.success('保存成功')
+    }
     editVisible.value = false
     loadData()
   } catch (e) {
-    ElMessage.error('保存失败')
+    ElMessage.error(isAdd.value ? '新增失败' : '保存失败')
   } finally {
     saving.value = false
   }
@@ -314,16 +343,11 @@ const downloadExcel = () => {
   generateExcel(tableData.value, '目的港：' + selectedDest.value)
 }
 
-// 下载全部数据库数据（直接请求后端生成Excel，避免cpolar截断大JSON）
+// 下载全部数据库数据（使用 axios 走 token 自动刷新）
 const downloadAll = async () => {
   try {
     ElMessage.info('正在导出全部数据...')
-    const token = localStorage.getItem('token')
-    const resp = await fetch('/api/quotes/export', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    if (!resp.ok) throw new Error('导出失败')
-    const blob = await resp.blob()
+    const blob = await request.get('/quotes/export', { responseType: 'blob' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -367,6 +391,7 @@ const generateExcel = (rows, subtitle) => {
     fields.forEach(f => {
       let val = row[f]
       if (val == null) val = ''
+      if (val === '' && f === 'country') val = '未知'
       html += '<td>' + String(val).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</td>'
     })
     html += '</tr>'

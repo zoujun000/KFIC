@@ -56,6 +56,14 @@ public class QuoteController {
         return Result.success(quoteService.listDestinations(country));
     }
 
+    @Operation(summary = "新增单条报价")
+    @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN','MAINTAINER')")
+    public Result<Void> create(@RequestBody FreightQuote quote) {
+        quoteService.createQuote(quote);
+        return Result.success();
+    }
+
     @Operation(summary = "更新单条报价")
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','MAINTAINER')")
@@ -98,6 +106,9 @@ public class QuoteController {
         List<FreightQuoteExcelVO> vos = rows.stream().map(r -> {
             FreightQuoteExcelVO vo = new FreightQuoteExcelVO();
             org.springframework.beans.BeanUtils.copyProperties(r, vo);
+            if (vo.getCountry() == null || vo.getCountry().isBlank()) {
+                vo.setCountry("未知");
+            }
             return vo;
         }).toList();
 

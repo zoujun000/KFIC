@@ -46,6 +46,11 @@ public interface QuoteService {
     List<FreightQuote> listByDestination(String destination);
 
     /**
+     * 新增单条报价
+     */
+    void createQuote(FreightQuote quote);
+
+    /**
      * 更新单条报价
      */
     void updateQuote(FreightQuote quote);

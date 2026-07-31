@@ -13,7 +13,8 @@ export const customerApi = {
   getById: (id) => request.get(`/customers/${id}`),
   save: (data) => request.post('/customers', data),
   update: (data) => request.put('/customers', data),
-  delete: (id) => request.delete(`/customers/${id}`)
+  delete: (id) => request.delete(`/customers/${id}`),
+  stats: () => request.get('/customers/stats')
 }
 
 // 订单
@@ -34,7 +35,8 @@ export const orderApi = {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
   getAttachments: (id) => request.get(`/orders/${id}/attachments`),
-  downloadAttachment: (id, filename) => request.get(`/orders/${id}/attachments/${encodeURIComponent(filename)}`, { responseType: 'blob' })
+  downloadAttachment: (id, filename) => request.get(`/orders/${id}/attachments/${encodeURIComponent(filename)}`, { responseType: 'blob' }),
+  previewDocAttachment: (id, filename) => request.get(`/orders/${id}/attachments/${encodeURIComponent(filename)}/word-preview`, { responseType: 'blob' })
 }
 export const quoteApi = {
   upload: (formData) => request.post('/quotes/upload', formData, {

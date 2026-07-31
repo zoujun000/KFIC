@@ -1,3 +1,63 @@
+/* ── 全局设计变量 ── */
+:root {
+  /* 品牌色 */
+  --color-primary: #409EFF;
+  --color-success: #67C23A;
+  --color-warning: #e6a23c;
+  --color-danger: #f56c6c;
+
+  /* 文字 */
+  --text-primary: #303133;
+  --text-regular: #606266;
+  --text-muted: #909399;
+
+  /* 背景 */
+  --bg-page: #f5f7fa;
+  --bg-white: #fff;
+  --bg-sidebar: #1e293b;
+
+  /* 边框 */
+  --border-light: #f0f0f0;
+  --border-base: #ebeef5;
+
+  /* 圆角 */
+  --radius-base: 6px;
+  --radius-card: 10px;
+
+  /* 阴影 */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06);
+
+  /* Element Plus 组件变量映射 */
+  --el-color-primary: var(--color-primary);
+  --el-color-success: var(--color-success);
+  --el-color-warning: var(--color-warning);
+  --el-color-danger: var(--color-danger);
+  --el-border-color-light: var(--border-light);
+  --el-bg-color-page: var(--bg-page);
+}
+
+/* 全局字体统一 */
+:root {
+  --el-font-family:
+    -apple-system, BlinkMacSystemFont,
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+    'Helvetica Neue', Helvetica, Arial,
+    sans-serif;
+}
+
+html, body, #app {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  font-family:
+    -apple-system, BlinkMacSystemFont,
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+    'Helvetica Neue', Helvetica, Arial,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 /* 全局移动端优化 */
 @media (max-width: 768px) {
   html {

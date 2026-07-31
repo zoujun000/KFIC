@@ -8,47 +8,15 @@
       </div>
       <el-menu
         :default-active="$route.path"
-        background-color="#001529"
+        background-color="#1e293b"
         text-color="#ffffffa6"
         active-text-color="#ffffff"
         :collapse="isCollapse"
         router
       >
-        <el-menu-item index="/dashboard">
-          <el-icon><Odometer /></el-icon>
-          <template #title>工作台</template>
-        </el-menu-item>
-        <el-menu-item index="/customers">
-          <el-icon><User /></el-icon>
-          <template #title>客户管理</template>
-        </el-menu-item>
-        <el-menu-item index="/orders">
-          <el-icon><Document /></el-icon>
-          <template #title>订单管理</template>
-        </el-menu-item>
-        <el-menu-item index="/quotes">
-          <el-icon><Goods /></el-icon>
-          <template #title>费用报价</template>
-        </el-menu-item>
-        <el-menu-item v-if="userStore.isManager" index="/quote-manage">
-          <el-icon><EditPen /></el-icon>
-          <template #title>报价费用管理</template>
-        </el-menu-item>
-        <el-menu-item v-if="userStore.isManager" index="/upload">
-          <el-icon><Upload /></el-icon>
-          <template #title>上传模块</template>
-        </el-menu-item>
-        <el-menu-item v-if="userStore.isAdmin" index="/logs">
-          <el-icon><Notebook /></el-icon>
-          <template #title>日志管理</template>
-        </el-menu-item>
-        <el-menu-item v-if="userStore.isManager" index="/port-charge-manage">
-          <el-icon><EditPen /></el-icon>
-          <template #title>目的港费用管理</template>
-        </el-menu-item>
-        <el-menu-item v-if="userStore.isAdmin" index="/user-manage">
-          <el-icon><Setting /></el-icon>
-          <template #title>角色管理</template>
+        <el-menu-item v-for="item in menuItems" :key="item.path" :index="item.path">
+          <el-icon><component :is="item.icon" /></el-icon>
+          <template #title>{{ item.title }}</template>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -61,47 +29,15 @@
       </div>
       <el-menu
         :default-active="$route.path"
-        background-color="#001529"
+        background-color="#1e293b"
         text-color="#ffffffa6"
         active-text-color="#ffffff"
         @select="drawerVisible = false"
         router
       >
-        <el-menu-item index="/dashboard">
-          <el-icon><Odometer /></el-icon>
-          <template #title>工作台</template>
-        </el-menu-item>
-        <el-menu-item index="/customers">
-          <el-icon><User /></el-icon>
-          <template #title>客户管理</template>
-        </el-menu-item>
-        <el-menu-item index="/orders">
-          <el-icon><Document /></el-icon>
-          <template #title>订单管理</template>
-        </el-menu-item>
-        <el-menu-item index="/quotes">
-          <el-icon><Goods /></el-icon>
-          <template #title>费用报价</template>
-        </el-menu-item>
-        <el-menu-item v-if="userStore.isManager" index="/quote-manage">
-          <el-icon><EditPen /></el-icon>
-          <template #title>报价费用管理</template>
-        </el-menu-item>
-        <el-menu-item v-if="userStore.isManager" index="/upload">
-          <el-icon><Upload /></el-icon>
-          <template #title>上传模块</template>
-        </el-menu-item>
-        <el-menu-item v-if="userStore.isAdmin" index="/logs">
-          <el-icon><Notebook /></el-icon>
-          <template #title>日志管理</template>
-        </el-menu-item>
-        <el-menu-item v-if="userStore.isManager" index="/port-charge-manage">
-          <el-icon><EditPen /></el-icon>
-          <template #title>目的港费用管理</template>
-        </el-menu-item>
-        <el-menu-item v-if="userStore.isAdmin" index="/user-manage">
-          <el-icon><Setting /></el-icon>
-          <template #title>角色管理</template>
+        <el-menu-item v-for="item in menuItems" :key="item.path" :index="item.path">
+          <el-icon><component :is="item.icon" /></el-icon>
+          <template #title>{{ item.title }}</template>
         </el-menu-item>
       </el-menu>
     </el-drawer>
@@ -140,7 +76,7 @@
           </el-popover>
           <el-dropdown @command="handleCommand">
             <div class="user-info">
-              <el-avatar size="small" :style="{ background: '#409EFF' }">
+              <el-avatar size="small" :style="{ background: 'var(--color-primary)' }">
                 {{ userStore.realName?.[0] || 'U' }}
               </el-avatar>
               <span class="username">{{ userStore.realName || userStore.username }}</span>
@@ -213,6 +149,26 @@ const etaAlertCount = computed(() => etaAlerts.value.length)
 // 缓存视图名称列表（keep-alive include）
 const cachedViews = computed(() => tabsStore.openedTabs.map(t => t.name).filter(Boolean))
 
+// 菜单项（侧边栏和抽屉共用，避免重复代码）
+const menuItems = computed(() => {
+  const items = [
+    { path: '/dashboard', title: '工作台', icon: 'Odometer' },
+    { path: '/customers', title: '客户管理', icon: 'User' },
+    { path: '/orders', title: '订单管理', icon: 'Document' },
+    { path: '/quotes', title: '费用报价', icon: 'Goods' },
+    { path: '/quote-manage', title: '报价费用管理', icon: 'EditPen', require: 'manager' },
+    { path: '/port-charge-manage', title: '目的港费用管理', icon: 'EditPen', require: 'manager' },
+    { path: '/upload', title: '上传模块', icon: 'Upload', require: 'manager' },
+    { path: '/logs', title: '日志管理', icon: 'Notebook', require: 'admin' },
+    { path: '/user-manage', title: '角色管理', icon: 'Setting', require: 'admin' },
+  ]
+  return items.filter(item => {
+    if (item.require === 'admin') return userStore.isAdmin
+    if (item.require === 'manager') return userStore.isManager
+    return true
+  })
+})
+
 // 切换标签
 const switchTab = (path) => {
   tabsStore.setActive(path)
@@ -252,7 +208,7 @@ const loadEtaAlerts = async () => {
 let alertTimer = null
 onMounted(() => {
   loadEtaAlerts()
-  alertTimer = setInterval(loadEtaAlerts, 5 * 60 * 1000) // 每5分钟刷新
+  alertTimer = setInterval(loadEtaAlerts, 5 * 60 * 1000)
 })
 onUnmounted(() => {
   if (alertTimer) clearInterval(alertTimer)
@@ -269,71 +225,144 @@ const handleCommand = async (cmd) => {
 
 <style scoped>
 .layout-container { height: 100vh; }
+.layout-container :deep(.el-container) { gap: 0; }
+
+/* ── 侧边栏 ── */
 .aside {
-  background: #001529;
+  background: var(--bg-sidebar);
   transition: width 0.3s;
   overflow: hidden;
+  border-right: none;
 }
+
+/* Logo 区域 */
 .logo {
   height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  border-bottom: 1px solid #ffffff15;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  position: relative;
+}
+.logo::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 20px;
+  right: 20px;
+  height: 2px;
+  background: var(--color-primary);
+  border-radius: 1px;
+  opacity: 0;
+  transition: opacity 0.3s;
 }
 .logo-text { color: #fff; font-weight: 600; font-size: 15px; white-space: nowrap; }
+
+/* 菜单 */
 .el-menu { border-right: none; }
+
+/* 菜单项 */
+.aside :deep(.el-menu-item) {
+  margin: 2px 8px;
+  border-radius: 8px;
+  height: 44px;
+  line-height: 44px;
+  transition: all 0.2s ease;
+}
+.aside :deep(.el-menu-item:hover) {
+  background: rgba(255,255,255,0.06) !important;
+}
+.aside :deep(.el-menu-item.is-active) {
+  background: rgba(64,158,255,0.15) !important;
+  color: #fff !important;
+  position: relative;
+}
+.aside :deep(.el-menu-item.is-active::before) {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  background: var(--color-primary);
+  border-radius: 2px;
+}
+
+/* 折叠态 */
+.aside :deep(.el-menu--collapse) {
+  width: 64px;
+}
+.aside :deep(.el-menu--collapse .el-menu-item) {
+  margin: 2px 10px;
+  padding: 0 !important;
+  justify-content: center;
+}
+
+/* 菜单项图标 */
+.aside :deep(.el-menu-item .el-icon) {
+  font-size: 18px;
+  transition: color 0.2s;
+}
+.aside :deep(.el-menu-item.is-active .el-icon) {
+  color: var(--color-primary);
+}
 .header {
-  background: #fff;
-  border-bottom: 1px solid #f0f0f0;
+  background: var(--bg-white);
+  border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
 }
 .header-left { display: flex; align-items: center; gap: 16px; }
-.collapse-btn { font-size: 20px; cursor: pointer; color: #606266; }
+.collapse-btn { font-size: 20px; cursor: pointer; color: var(--text-regular); }
 .menu-btn { display: none; }
 @media (max-width: 768px) {
-  .menu-btn { display: block; font-size: 22px; cursor: pointer; color: #606266; }
+  .menu-btn { display: block; font-size: 22px; cursor: pointer; color: var(--text-regular); }
 }
 .header-right .user-info {
   display: flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  color: #606266;
+  color: var(--text-regular);
 }
 .username { font-size: 14px; }
 
 /* ── 小喇叭通知 ── */
 .bell-badge { margin-right: 16px; cursor: pointer; }
-.bell-icon { color: #606266; transition: color 0.2s; font-size: 20px; }
-.bell-icon:hover { color: #409EFF; }
+.bell-icon { color: var(--text-regular); transition: color 0.2s; font-size: 20px; }
+.bell-icon:hover { color: var(--color-primary); }
 .alert-list { max-height: 320px; overflow-y: auto; }
 .alert-item {
   padding: 10px 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-light);
   cursor: pointer;
   transition: background 0.2s;
 }
 .alert-item:last-child { border-bottom: none; }
-.alert-item:hover { background: #f5f7fa; }
-.alert-so { font-weight: 600; color: #303133; margin-bottom: 4px; }
-.alert-detail { font-size: 13px; color: #e6a23c; }
-.main { background: #f5f7fa; padding: 0 20px 20px; }
+.alert-item:hover { background: var(--bg-page); }
+.alert-so { font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+.alert-detail { font-size: 13px; color: var(--color-warning); }
+
+/* ── 主内容区（无负 margin hack）── */
+.main {
+  background: var(--bg-page);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
 
 /* ── 标签栏 ── */
 .tab-bar {
   display: flex;
   align-items: center;
-  background: #fff;
-  border-bottom: 1px solid #e8e8e8;
-  margin: 0 -20px 12px;
+  background: var(--bg-white);
+  border-bottom: 1px solid var(--border-light);
   padding: 0 12px;
   height: 38px;
-  overflow: hidden;
+  flex-shrink: 0;
 }
 .tab-list {
   display: flex;
@@ -359,17 +388,17 @@ const handleCommand = async (cmd) => {
   transition: all 0.2s;
   position: relative;
 }
-.tab-item:hover { color: #409EFF; background: #f5f7fa; }
+.tab-item:hover { color: var(--color-primary); background: var(--bg-page); }
 .tab-item.active {
-  color: #409EFF;
-  background: #f5f7fa;
+  color: var(--color-primary);
+  background: var(--bg-page);
 }
 .tab-item.active::after {
   content: '';
   position: absolute;
   bottom: 0; left: 0; right: 0;
   height: 2px;
-  background: #409EFF;
+  background: var(--color-primary);
 }
 .tab-close {
   font-size: 12px;
@@ -377,20 +406,27 @@ const handleCommand = async (cmd) => {
   padding: 2px;
   transition: all 0.2s;
 }
-.tab-close:hover { background: #ddd; color: #f56c6c; }
+.tab-close:hover { background: #ddd; color: var(--color-danger); }
 .tab-more {
   flex-shrink: 0;
   cursor: pointer;
   color: #999;
   padding: 4px 8px;
-  border-left: 1px solid #f0f0f0;
+  border-left: 1px solid var(--border-light);
 }
-.tab-more:hover { color: #409EFF; }
-.tab-content { min-height: calc(100vh - 200px); }
+.tab-more:hover { color: var(--color-primary); }
+
+/* ── 内容区 ── */
+.tab-content {
+  flex: 1;
+  padding: 12px;
+  overflow-y: auto;
+}
 
 @media (max-width: 768px) {
-  .tab-bar { margin: 0 -10px 10px; padding: 0 6px; }
+  .tab-bar { padding: 0 6px; }
   .tab-item { padding: 0 10px; font-size: 12px; }
+  .tab-content { padding: 10px; }
 }
 
 /* ── 移动端抽屉 ── */
@@ -401,12 +437,37 @@ const handleCommand = async (cmd) => {
   justify-content: center;
   gap: 10px;
   border-bottom: 1px solid #ffffff15;
-  background: #001529;
+  background: var(--bg-sidebar);
 }
 .drawer-logo-text { color: #fff; font-weight: 600; font-size: 15px; white-space: nowrap; }
-:deep(.el-drawer__body) { padding: 0; background: #001529; }
 
-/* ── 移动端适配：只叠加，不改动原结构 ── */
+/* 抽屉菜单样式（与侧边栏一致） */
+:deep(.el-drawer__body) { padding: 0; background: var(--bg-sidebar); }
+:deep(.el-drawer__body .el-menu-item) {
+  margin: 2px 8px;
+  border-radius: 8px;
+  height: 44px;
+  line-height: 44px;
+}
+:deep(.el-drawer__body .el-menu-item:hover) {
+  background: rgba(255,255,255,0.06) !important;
+}
+:deep(.el-drawer__body .el-menu-item.is-active) {
+  background: rgba(64,158,255,0.15) !important;
+  color: #fff !important;
+}
+:deep(.el-drawer__body .el-menu-item.is-active::before) {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  background: var(--color-primary);
+  border-radius: 2px;
+}
+
+/* ── 移动端适配 ── */
 @media (max-width: 768px) {
   .aside { display: none; }
   .header {
@@ -418,7 +479,7 @@ const handleCommand = async (cmd) => {
   .collapse-btn {
     display: none;
   }
-  .main {
+  .tab-content {
     padding: 10px;
   }
 }

@@ -14,6 +14,7 @@ import com.freight.mapper.FreightOrderMapper;
 import com.freight.service.AttachmentPathService;
 import com.freight.service.FreightOrderService;
 import com.freight.util.SecurityUtil;
+import com.freight.util.SnowflakeIdGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
@@ -24,8 +25,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -36,6 +35,7 @@ public class FreightOrderServiceImpl implements FreightOrderService {
     private final FreightOrderMapper orderMapper;
     private final CustomerMapper customerMapper;
     private final AttachmentPathService attachmentPathService;
+    private final SnowflakeIdGenerator snowflakeIdGenerator;
 
     @Override
     public IPage<FreightOrder> page(OrderQueryDTO query) {
@@ -84,7 +84,7 @@ public class FreightOrderServiceImpl implements FreightOrderService {
     public void create(FreightOrderDTO dto) {
         FreightOrder order = new FreightOrder();
         BeanUtils.copyProperties(dto, order);
-        order.setOrderNo("ORD" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        order.setOrderNo(snowflakeIdGenerator.nextOrderNo());
         order.setStatus("进仓");
         order.setCreatedBy(SecurityUtil.getCurrentUserId());
         orderMapper.insert(order);

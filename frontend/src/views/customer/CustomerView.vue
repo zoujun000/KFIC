@@ -6,14 +6,14 @@
         <div class="stat-icon"><el-icon :size="28"><User /></el-icon></div>
         <div class="stat-info">
           <span class="stat-label">客户总数</span>
-          <span class="stat-value">{{ total }}</span>
+          <span class="stat-value">{{ statsData.total }}</span>
         </div>
       </div>
       <div class="stat-card" style="background: linear-gradient(135deg, #f093fb, #f5576c)">
         <div class="stat-icon"><el-icon :size="28"><ChatDotRound /></el-icon></div>
         <div class="stat-info">
           <span class="stat-label">活跃客户</span>
-          <span class="stat-value">{{ activeCount }}</span>
+          <span class="stat-value">{{ statsData.active }}</span>
         </div>
       </div>
     </div>
@@ -21,10 +21,22 @@
     <!-- 搜索 + 操作 -->
     <el-card class="content-card" shadow="never">
       <div class="table-toolbar">
-        <el-input v-model="keyword" placeholder="搜索公司名 / 联系人 / 微信 / WhatsApp" clearable
-          :prefix-icon="Search" class="search-input" />
-        <el-button type="primary" :icon="Plus" @click="openDialog()" round>新增客户</el-button>
-        <el-button :icon="Download" @click="exportCustomers" :loading="exporting" round>导出</el-button>
+        <div class="toolbar-left">
+          <el-input v-model="keyword" placeholder="搜索公司名 / 联系人 / 微信 / WhatsApp / 邮箱" clearable
+            :prefix-icon="Search" class="search-input" />
+          <el-select v-model="filterStatus" placeholder="状态" clearable class="filter-select" @change="onFilterChange">
+            <el-option label="启用" :value="1" />
+            <el-option label="禁用" :value="0" />
+          </el-select>
+          <el-select v-model="filterType" placeholder="客户类型" clearable class="filter-select" @change="onFilterChange">
+            <el-option label="直客" value="direct" />
+            <el-option label="同行" value="coload" />
+          </el-select>
+        </div>
+        <div class="toolbar-right">
+          <el-button type="primary" :icon="Plus" @click="openDialog()" round>新增客户</el-button>
+          <el-button :icon="Download" @click="exportCustomers" :loading="exporting" round>导出</el-button>
+        </div>
       </div>
 
       <!-- 表格 -->
@@ -69,6 +81,13 @@
               <el-icon size="14"><Message /></el-icon>
               {{ row.email }}
             </a>
+            <span v-else class="text-muted">—</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="类型" width="90" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.customerType === 'direct'" type="primary" size="small" effect="light">直客</el-tag>
+            <el-tag v-else-if="row.customerType === 'coload'" type="warning" size="small" effect="light">同行</el-tag>
             <span v-else class="text-muted">—</span>
           </template>
         </el-table-column>
@@ -227,8 +246,6 @@
         </div>
       </template>
     </el-dialog>
-
-
   </div>
 </template>
 
@@ -252,12 +269,23 @@ const total = ref(0)
 const pageNum = ref(1)
 const pageSize = ref(10)
 const keyword = ref('')
+const filterStatus = ref(null)
+const filterType = ref('')
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref()
 const uploadRef = ref()
 
-const activeCount = computed(() => tableData.value.filter(c => c.status === 1).length)
+// 【修复】统计数据从后端获取，不再用当前页数据计算
+const statsData = reactive({ total: 0, active: 0 })
+
+const loadStats = async () => {
+  try {
+    const res = await customerApi.stats()
+    statsData.total = res.data.total ?? 0
+    statsData.active = res.data.active ?? 0
+  } catch { /* 统计加载失败不影响主流程 */ }
+}
 
 const avatarColors = ['#409eff', '#67c23a', '#e6a23c', '#f56c6c', '#909399', '#764ba2', '#f093fb', '#00d2ff']
 const avatarColor = (name) => {
@@ -265,17 +293,20 @@ const avatarColor = (name) => {
   return avatarColors[name.charCodeAt(0) % avatarColors.length]
 }
 
-const uploadAction = import.meta.env.DEV ? '/api/files/upload/business-license' : '/api/files/upload/business-license'
+const uploadAction = '/api/files/upload/business-license'
 const uploadHeaders = computed(() => ({ Authorization: `Bearer ${localStorage.getItem('accessToken')}` }))
 const uploadData = computed(() => ({
   customerType: form.customerType,
   companyName: form.companyName
 }))
 
-const form = reactive({
+const defaultForm = () => ({
   id: null, companyName: '', contactName: '', wechat: '', whatsapp: '',
   phone: '', email: '', address: '', remark: '', status: 1, customerType: 'direct', photoUrl: ''
 })
+
+const form = reactive(defaultForm())
+
 const rules = {
   companyName: [{ required: true, message: '请输入公司名称', trigger: 'blur' }],
   contactName: [{ required: true, message: '请输入联系人', trigger: 'blur' }],
@@ -294,8 +325,6 @@ const beforeUpload = (file) => {
 const isPdf = (filename) => filename?.toLowerCase().endsWith('.pdf')
 
 const onUploadSuccess = (res) => {
-  console.log('上传响应:', res, typeof res)
-  // el-upload 可能返回字符串或对象，兼容处理
   const data = typeof res === 'string' ? JSON.parse(res) : res
   if (data.code === 200) { form.photoUrl = data.data; ElMessage.success('上传成功') }
   else ElMessage.error(data.message || '上传失败')
@@ -309,38 +338,67 @@ const viewLicense = (filename) => window.open(fileApi.getPhotoUrl(filename), '_b
 const loadData = async () => {
   loading.value = true
   try {
-    const res = await customerApi.page({ keyword: keyword.value, pageNum: pageNum.value, pageSize: pageSize.value })
+    const params = { keyword: keyword.value, pageNum: pageNum.value, pageSize: pageSize.value }
+    if (filterStatus.value !== null && filterStatus.value !== '') params.status = filterStatus.value
+    if (filterType.value) params.customerType = filterType.value
+    const res = await customerApi.page(params)
     tableData.value = res.data.records
     total.value = res.data.total
   } finally { loading.value = false }
 }
 
+const onFilterChange = () => {
+  pageNum.value = 1
+  loadData()
+}
+
+// 【修复】编辑时只提取表单需要的字段，避免残留多余属性
 const openDialog = (row = null) => {
   isEdit.value = !!row
-  Object.assign(form, row ? { ...row } : {
-    id: null, companyName: '', contactName: '', wechat: '', whatsapp: '',
-    phone: '', email: '', address: '', remark: '', status: 1, customerType: 'direct', photoUrl: ''
-  })
+  const fresh = defaultForm()
+  if (row) {
+    Object.keys(fresh).forEach(key => {
+      fresh[key] = row[key] ?? fresh[key]
+    })
+  }
+  Object.assign(form, fresh)
   dialogVisible.value = true
 }
 
 const handleSave = async () => {
-  await formRef.value.validate()
+  try {
+    await formRef.value.validate()
+  } catch {
+    return // 校验失败，不继续
+  }
   saving.value = true
   try {
     const { id, companyName, contactName, wechat, whatsapp, phone, email, address, remark, status, customerType, photoUrl } = form
-    if (isEdit.value) await customerApi.update({ id, companyName, contactName, wechat, whatsapp, phone, email, address, remark, status, customerType, photoUrl })
-    else await customerApi.save({ companyName, contactName, wechat, whatsapp, phone, email, address, remark, status, customerType, photoUrl })
+    if (isEdit.value) {
+      await customerApi.update({ id, companyName, contactName, wechat, whatsapp, phone, email, address, remark, status, customerType, photoUrl })
+    } else {
+      await customerApi.save({ companyName, contactName, wechat, whatsapp, phone, email, address, remark, status, customerType, photoUrl })
+    }
     ElMessage.success('保存成功')
     dialogVisible.value = false
     loadData()
-  } finally { saving.value = false }
+    loadStats()
+  } catch {
+    // 错误消息已由 request 拦截器统一处理
+  } finally {
+    saving.value = false
+  }
 }
 
 const handleDelete = async (id) => {
-  await customerApi.delete(id)
-  ElMessage.success('删除成功')
-  loadData()
+  try {
+    await customerApi.delete(id)
+    ElMessage.success('删除成功')
+    loadData()
+    loadStats()
+  } catch {
+    // 错误消息已由 request 拦截器统一处理
+  }
 }
 
 // 防抖搜索：输入后 300ms 自动查询
@@ -353,8 +411,11 @@ watch(debouncedKeyword, () => {
 const exportCustomers = async () => {
   exporting.value = true
   try {
-    // 拉取全部客户数据
-    const res = await customerApi.page({ keyword: keyword.value, pageNum: 1, pageSize: 10000 })
+    // 拉取全部客户数据（带当前筛选条件）
+    const params = { keyword: keyword.value, pageNum: 1, pageSize: 10000 }
+    if (filterStatus.value !== null && filterStatus.value !== '') params.status = filterStatus.value
+    if (filterType.value) params.customerType = filterType.value
+    const res = await customerApi.page(params)
     const rows = res.data.records
     if (!rows.length) { ElMessage.warning('没有数据可导出'); return }
 
@@ -389,7 +450,10 @@ const exportCustomers = async () => {
   } finally { exporting.value = false }
 }
 
-onMounted(loadData)
+onMounted(() => {
+  loadData()
+  loadStats()
+})
 </script>
 
 <style scoped>
@@ -417,9 +481,12 @@ onMounted(loadData)
 
 .table-toolbar {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 20px 0 16px;
+  padding: 20px 0 16px; flex-wrap: wrap; gap: 12px;
 }
-.search-input { width: 360px; }
+.toolbar-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.toolbar-right { display: flex; align-items: center; gap: 10px; }
+.search-input { width: 320px; }
+.filter-select { width: 120px; }
 
 /* 客户单元格 */
 .customer-cell { display: flex; align-items: center; gap: 12px; }
@@ -479,9 +546,12 @@ onMounted(loadData)
 @media (max-width: 768px) {
   .stat-row { grid-template-columns: 1fr; gap: 10px; }
   .stat-value { font-size: 24px; }
-  .table-toolbar { flex-direction: column; gap: 10px; }
+  .table-toolbar { flex-direction: column; align-items: stretch; }
+  .toolbar-left { flex-direction: column; }
+  .toolbar-right { justify-content: space-between; }
   .search-input { width: 100% !important; }
-  .table-toolbar .el-button { width: 48%; }
+  .filter-select { width: 100%; }
+  .toolbar-right .el-button { width: 48%; }
   .customer-cell .customer-avatar { width: 32px; height: 32px; font-size: 14px; }
   .customer-name { font-size: 13px; }
   :deep(.el-dialog) { width: 94vw !important; }

@@ -6,8 +6,8 @@ spring:
     name: freight-system
   servlet:
     multipart:
-      max-file-size: 200MB
-      max-request-size: 200MB
+      max-file-size: 500MB
+      max-request-size: 500MB
   datasource:
     url: jdbc:mysql://localhost:3306/KFIC?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
     username: root
@@ -16,6 +16,15 @@ spring:
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
@@ -30,8 +39,9 @@ mybatis-plus:
       logic-not-delete-value: 0
 
 jwt:
-  secret: freight-system-secret-key-2024-must-be-at-least-256-bits-long!!
-  expiration: 86400000
+  secret: ${JWT_SECRET:freight-system-secret-key-2024-must-be-at-least-256-bits-long!!}
+  access-expiration: 7200000
+  refresh-expiration: 2592000000
 
 springdoc:
   swagger-ui:

@@ -1,8 +1,10 @@
 package com.freight.controller;
 
 import com.freight.common.result.Result;
+import com.freight.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -20,6 +22,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
+@Slf4j
 @Tag(name = "文件管理")
 @RestController
 @RequestMapping("/api/files")
@@ -51,8 +54,8 @@ public class FileController {
         }
 
         try {
-            // 确定子目录: 直客营业执照 或 同行营业执照
-            String typeDir = "DIRECT".equals(customerType) ? "直客营业执照" : "同行营业执照";
+            // 确定子目录: 直客营业执照 或 同行营业执照（忽略大小写，前端传 direct/coload）
+            String typeDir = "DIRECT".equalsIgnoreCase(customerType) ? "直客营业执照" : "同行营业执照";
 
             // 公司名作为子文件夹（清理非法字符）
             String safeCompanyName = sanitizeFolderName(companyName);
@@ -79,6 +82,10 @@ public class FileController {
             // 保存文件
             Path targetPath = targetDir.resolve(newFileName);
             file.transferTo(targetPath.toFile());
+
+            // 记录上传人（审计追溯：谁在什么时候给哪家公司传了执照）
+            log.info("营业执照上传 | 上传人ID={} | 公司={} | 客户类型={} | 文件={}",
+                    SecurityUtil.getCurrentUserId(), safeCompanyName, customerType, newFileName);
 
             // 返回相对路径: 直客营业执照/公司名/文件名
             String relativePath = typeDir + "/" + safeCompanyName + "/" + newFileName;

@@ -28,6 +28,8 @@ public class Customer {
     private String whatsapp;
     private String remark;
     private String photoUrl;
+    /** 营业执照上传人用户ID */
+    private Long licenseUploadedBy;
     private Long createdBy;
 
     private Integer status;

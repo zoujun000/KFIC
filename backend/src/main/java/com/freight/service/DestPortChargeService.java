@@ -19,4 +19,5 @@ public interface DestPortChargeService {
     void updateCharge(DestPortCharge charge);
     void deleteCharge(Long id);
     List<DestPortCharge> listAll();
+    void addDestination(String country, String destination);
 }

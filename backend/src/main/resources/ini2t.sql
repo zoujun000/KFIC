@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS `freight_order` (
     `destination`     VARCHAR(100) NOT NULL COMMENT '目的地',
     `cargo_name`      VARCHAR(100) DEFAULT NULL COMMENT '货物名称',
     `cargo_weight`    DECIMAL(10,2) DEFAULT NULL COMMENT '货物重量(KG)',
+    `chargeable_weight` DECIMAL(10,2) DEFAULT NULL COMMENT '收费重(KG)',
     `cargo_volume`    DECIMAL(10,3) DEFAULT NULL COMMENT '货物体积(CBM)',
     `status`          VARCHAR(20)  NOT NULL DEFAULT 'PENDING' COMMENT '状态: PENDING/PROCESSING/SHIPPED/COMPLETED/CANCELLED',
     `etd`             DATE         DEFAULT NULL COMMENT '预计出发日期',

@@ -28,11 +28,18 @@ public class FreightOrder {
 
     private String cargoName;
 
+    @TableField(updateStrategy = FieldStrategy.IGNORED)
     private BigDecimal cargoWeight;
 
+    /** 收费重(KG) */
+    @TableField(updateStrategy = FieldStrategy.IGNORED)
+    private BigDecimal chargeableWeight;
+
+    @TableField(updateStrategy = FieldStrategy.IGNORED)
     private BigDecimal cargoVolume;
 
     /** 件数 */
+    @TableField(updateStrategy = FieldStrategy.IGNORED)
     private Integer packageCount;
 
     /** 船名航次 */
@@ -50,6 +57,7 @@ public class FreightOrder {
 
     private LocalDate eta;
 
+    @TableField(updateStrategy = FieldStrategy.IGNORED)
     private BigDecimal totalAmount;
 
     private String remark;

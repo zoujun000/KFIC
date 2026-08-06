@@ -153,6 +153,7 @@ const cachedViews = computed(() => tabsStore.openedTabs.map(t => t.name).filter(
 const menuItems = computed(() => {
   const items = [
     { path: '/dashboard', title: '工作台', icon: 'Odometer' },
+    { path: '/announcements', title: '公告栏', icon: 'Bell' },
     { path: '/customers', title: '客户管理', icon: 'User' },
     { path: '/orders', title: '订单管理', icon: 'Document' },
     { path: '/quotes', title: '费用报价', icon: 'Goods' },

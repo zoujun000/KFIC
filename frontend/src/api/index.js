@@ -90,3 +90,17 @@ export const portChargeApi = {
 export const logApi = {
   list: (type) => request.get('/logs', { params: type ? { type } : {} })
 }
+
+// 公告栏
+export const announcementApi = {
+  page: (params) => request.get('/announcements', { params }),
+  create: (data) => request.post('/announcements', data),
+  update: (id, data) => request.put(`/announcements/${id}`, data),
+  delete: (id) => request.delete(`/announcements/${id}`),
+  uploadAttachments: (id, formData) => request.post(`/announcements/${id}/attachments`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  downloadAttachment: (id, filename) => request.get(`/announcements/${id}/attachments/${encodeURIComponent(filename)}`, { responseType: 'blob' }),
+  deleteAttachment: (id, filename) => request.delete(`/announcements/${id}/attachments/${encodeURIComponent(filename)}`),
+  previewDocAttachment: (id, filename) => request.get(`/announcements/${id}/attachments/${encodeURIComponent(filename)}/word-preview`, { responseType: 'blob' })
+}

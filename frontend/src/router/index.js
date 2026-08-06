@@ -27,6 +27,12 @@ const routes = [
         meta: { title: '工作台', icon: 'Odometer' }
       },
       {
+        path: 'announcements',
+        name: 'Announcements',
+        component: () => import('@/views/announcement/AnnouncementView.vue'),
+        meta: { title: '公告栏', icon: 'Bell' }
+      },
+      {
         path: 'customers',
         name: 'Customers',
         component: () => import('@/views/customer/CustomerView.vue'),

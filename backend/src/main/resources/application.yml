@@ -25,6 +25,10 @@ spring:
           max-active: 8
           max-idle: 8
           min-idle: 0
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:migration_announcement.sql
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml

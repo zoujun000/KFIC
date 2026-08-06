@@ -39,5 +39,4 @@ public class FreightOrderDTO {
     private LocalDate eta;
     private BigDecimal totalAmount;
     private String remark;
-    private Long createdBy;
 }

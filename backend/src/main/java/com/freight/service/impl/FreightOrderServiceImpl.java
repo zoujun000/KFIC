@@ -61,8 +61,7 @@ public class FreightOrderServiceImpl implements FreightOrderService {
         }
 
         if (!SecurityUtil.isAdmin()) {
-            Long userId = SecurityUtil.getCurrentUserId();
-            if (userId != null) wrapper.eq(FreightOrder::getCreatedBy, userId);
+            wrapper.eq(FreightOrder::getCreatedBy, requireCurrentUserId());
         }
         return wrapper;
     }
@@ -72,8 +71,7 @@ public class FreightOrderServiceImpl implements FreightOrderService {
         FreightOrder order = orderMapper.selectById(id);
         if (order == null) throw new BusinessException("订单不存在");
         if (!SecurityUtil.isAdmin()) {
-            Long userId = SecurityUtil.getCurrentUserId();
-            if (userId != null && !userId.equals(order.getCreatedBy())) {
+            if (!requireCurrentUserId().equals(order.getCreatedBy())) {
                 throw new BusinessException("无权访问该订单");
             }
         }
@@ -83,10 +81,10 @@ public class FreightOrderServiceImpl implements FreightOrderService {
     @Override
     public void create(FreightOrderDTO dto) {
         FreightOrder order = new FreightOrder();
-        BeanUtils.copyProperties(dto, order);
+        BeanUtils.copyProperties(dto, order, "createdBy");
         order.setOrderNo(snowflakeIdGenerator.nextOrderNo());
         order.setStatus("进仓");
-        order.setCreatedBy(SecurityUtil.getCurrentUserId());
+        order.setCreatedBy(requireCurrentUserId());
         orderMapper.insert(order);
         createOrderDir(order);
     }
@@ -98,19 +96,18 @@ public class FreightOrderServiceImpl implements FreightOrderService {
         FreightOrder oldOrder = orderMapper.selectById(dto.getId());
         if (oldOrder == null) throw new BusinessException("订单不存在");
         if (!SecurityUtil.isAdmin()) {
-            Long userId = SecurityUtil.getCurrentUserId();
-            if (userId != null && !userId.equals(oldOrder.getCreatedBy())) {
+            if (!requireCurrentUserId().equals(oldOrder.getCreatedBy())) {
                 throw new BusinessException("无权修改该订单");
             }
         }
 
         FreightOrder order = new FreightOrder();
-        BeanUtils.copyProperties(dto, order);
+        BeanUtils.copyProperties(dto, order, "createdBy");
 
         LambdaUpdateWrapper<FreightOrder> wrapper = new LambdaUpdateWrapper<FreightOrder>()
                 .eq(FreightOrder::getId, dto.getId());
         if (!SecurityUtil.isAdmin()) {
-            wrapper.eq(FreightOrder::getCreatedBy, SecurityUtil.getCurrentUserId());
+            wrapper.eq(FreightOrder::getCreatedBy, requireCurrentUserId());
         }
 
         int rows = orderMapper.update(order, wrapper);
@@ -125,7 +122,7 @@ public class FreightOrderServiceImpl implements FreightOrderService {
                 .eq(FreightOrder::getId, id)
                 .set(FreightOrder::getStatus, status);
         if (!SecurityUtil.isAdmin()) {
-            wrapper.eq(FreightOrder::getCreatedBy, SecurityUtil.getCurrentUserId());
+            wrapper.eq(FreightOrder::getCreatedBy, requireCurrentUserId());
         }
         int rows = orderMapper.update(null, wrapper);
         if (rows == 0) throw new BusinessException("订单不存在或无权修改");
@@ -136,12 +133,10 @@ public class FreightOrderServiceImpl implements FreightOrderService {
         FreightOrder order = orderMapper.selectById(id);
         if (order == null) throw new BusinessException("订单不存在");
         if (!SecurityUtil.isAdmin()) {
-            Long userId = SecurityUtil.getCurrentUserId();
-            if (userId != null && !userId.equals(order.getCreatedBy())) {
+            if (!requireCurrentUserId().equals(order.getCreatedBy())) {
                 throw new BusinessException("无权删除该订单");
             }
         }
-        deleteOrderDir(order);
         int rows = orderMapper.deleteById(id);
         if (rows == 0) throw new BusinessException("删除失败");
     }
@@ -154,8 +149,7 @@ public class FreightOrderServiceImpl implements FreightOrderService {
                 .ne(FreightOrder::getStatus, "已提货")
                 .orderByAsc(FreightOrder::getEta);
         if (!SecurityUtil.isAdmin()) {
-            Long userId = SecurityUtil.getCurrentUserId();
-            if (userId != null) wrapper.eq(FreightOrder::getCreatedBy, userId);
+            wrapper.eq(FreightOrder::getCreatedBy, requireCurrentUserId());
         }
         return orderMapper.selectList(wrapper);
     }
@@ -164,11 +158,16 @@ public class FreightOrderServiceImpl implements FreightOrderService {
 
     @Override
     public Path getAttachmentDir(Long orderId) {
-        FreightOrder order = orderMapper.selectById(orderId);
-        if (order == null) throw new BusinessException("订单不存在");
+        FreightOrder order = getById(orderId);
         Customer customer = customerMapper.selectByIdIncludeDeleted(order.getCustomerId());
         if (customer == null) throw new BusinessException("客户不存在");
         return attachmentPathService.resolveOrderDir(customer, order);
+    }
+
+    private Long requireCurrentUserId() {
+        Long userId = SecurityUtil.getCurrentUserId();
+        if (userId == null) throw new BusinessException("未获取到当前用户身份");
+        return userId;
     }
 
     @Override
@@ -227,17 +226,6 @@ public class FreightOrderServiceImpl implements FreightOrderService {
             Files.createDirectories(dir);
         } catch (IOException ignored) {
             // 创建失败不阻断业务流程
-        }
-    }
-
-    private void deleteOrderDir(FreightOrder order) {
-        try {
-            Customer customer = customerMapper.selectById(order.getCustomerId());
-            if (customer == null) return;
-            Path dir = attachmentPathService.resolveOrderDir(customer, order);
-            deleteRecursively(dir);
-        } catch (IOException ignored) {
-            // 删除失败不阻断业务流程
         }
     }
 

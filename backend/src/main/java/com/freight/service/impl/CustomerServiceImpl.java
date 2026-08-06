@@ -41,8 +41,7 @@ public class CustomerServiceImpl implements CustomerService {
                 .orderByDesc(Customer::getCreateTime);
 
         if (!SecurityUtil.isAdmin()) {
-            Long userId = SecurityUtil.getCurrentUserId();
-            if (userId != null) wrapper.eq(Customer::getCreatedBy, userId);
+            wrapper.eq(Customer::getCreatedBy, requireCurrentUserId());
         }
 
         return customerMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
@@ -50,11 +49,11 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     public Customer getById(Long id) {
+        if (!SecurityUtil.isAdmin()) requireCurrentUserId();
         Customer customer = customerMapper.selectById(id);
         if (customer == null) throw new BusinessException("客户不存在");
         if (!SecurityUtil.isAdmin()) {
-            Long userId = SecurityUtil.getCurrentUserId();
-            if (userId != null && !userId.equals(customer.getCreatedBy())) {
+            if (!requireCurrentUserId().equals(customer.getCreatedBy())) {
                 throw new BusinessException("无权访问该客户");
             }
         }
@@ -65,16 +64,14 @@ public class CustomerServiceImpl implements CustomerService {
     public Map<String, Long> getStats() {
         LambdaQueryWrapper<Customer> baseWrapper = new LambdaQueryWrapper<>();
         if (!SecurityUtil.isAdmin()) {
-            Long userId = SecurityUtil.getCurrentUserId();
-            if (userId != null) baseWrapper.eq(Customer::getCreatedBy, userId);
+            baseWrapper.eq(Customer::getCreatedBy, requireCurrentUserId());
         }
         Long totalCount = customerMapper.selectCount(baseWrapper);
 
         LambdaQueryWrapper<Customer> activeWrapper = new LambdaQueryWrapper<Customer>()
                 .eq(Customer::getStatus, 1);
         if (!SecurityUtil.isAdmin()) {
-            Long userId = SecurityUtil.getCurrentUserId();
-            if (userId != null) activeWrapper.eq(Customer::getCreatedBy, userId);
+            activeWrapper.eq(Customer::getCreatedBy, requireCurrentUserId());
         }
         Long activeCount = customerMapper.selectCount(activeWrapper);
 
@@ -92,10 +89,11 @@ public class CustomerServiceImpl implements CustomerService {
         if (!StringUtils.hasText(customer.getCustomerCode())) {
             customer.setCustomerCode(generateCustomerCode());
         }
-        customer.setCreatedBy(SecurityUtil.getCurrentUserId());
+        Long userId = requireCurrentUserId();
+        customer.setCreatedBy(userId);
         // 记录了营业执照的上传人
         if (StringUtils.hasText(customer.getPhotoUrl())) {
-            customer.setLicenseUploadedBy(SecurityUtil.getCurrentUserId());
+            customer.setLicenseUploadedBy(userId);
         }
         // 防止前端传入非法字段
         // 统一 customerType 为小写
@@ -133,7 +131,7 @@ public class CustomerServiceImpl implements CustomerService {
         LambdaUpdateWrapper<Customer> wrapper = new LambdaUpdateWrapper<Customer>()
                 .eq(Customer::getId, customer.getId());
         if (!SecurityUtil.isAdmin()) {
-            wrapper.eq(Customer::getCreatedBy, SecurityUtil.getCurrentUserId());
+            wrapper.eq(Customer::getCreatedBy, requireCurrentUserId());
         }
         int rows = customerMapper.update(customer, wrapper);
         if (rows == 0) throw new BusinessException("客户不存在或无权修改");
@@ -144,10 +142,16 @@ public class CustomerServiceImpl implements CustomerService {
         LambdaQueryWrapper<Customer> wrapper = new LambdaQueryWrapper<Customer>()
                 .eq(Customer::getId, id);
         if (!SecurityUtil.isAdmin()) {
-            wrapper.eq(Customer::getCreatedBy, SecurityUtil.getCurrentUserId());
+            wrapper.eq(Customer::getCreatedBy, requireCurrentUserId());
         }
         int rows = customerMapper.delete(wrapper);
         if (rows == 0) throw new BusinessException("客户不存在或无权删除");
+    }
+
+    private Long requireCurrentUserId() {
+        Long userId = SecurityUtil.getCurrentUserId();
+        if (userId == null) throw new BusinessException("未获取到当前用户身份");
+        return userId;
     }
 
     /**

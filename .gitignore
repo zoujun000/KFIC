@@ -23,3 +23,15 @@ frontend/dist/
 
 # OS
 Thumbs.db
+
+# Local tooling
+.codex/
+.tokrepo/
+TokRepo.lock
+
+# Backup files
+*.bak*
+
+# Obsidian workspace state
+worklog-vault/.obsidian/workspace.json
+worklog-vault/.obsidian/workspace-mobile.json

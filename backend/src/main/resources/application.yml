@@ -52,3 +52,7 @@ springdoc:
     path: /swagger-ui.html
   api-docs:
     path: /v3/api-docs
+
+aisstream:
+  # AISStream 实时 AIS 数据流 API Key（可用环境变量 AISSTREAM_API_KEY 覆盖）
+  api-key: ${AISSTREAM_API_KEY:164be3ed8c714b98254949236ec9784297206866}

@@ -60,6 +60,14 @@ export const destChargeApi = {
   ports: () => request.get('/dest-charges/ports'),
   logs: () => request.get('/dest-charges/logs')
 }
+
+// 船舶定位（AISStream）
+export const shipLocateApi = {
+  search: (keyword) => request.get('/ship-locate/search', { params: { keyword } }),
+  locate: (mmsi) => request.get(`/ship-locate/${mmsi}`),
+  status: () => request.get('/ship-locate/status')
+}
+
 // 文件上传
 export const fileApi = {
   uploadBusinessLicense: (formData) => request.post('/files/upload/business-license', formData, {

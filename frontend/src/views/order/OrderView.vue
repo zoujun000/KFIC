@@ -106,7 +106,7 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="客户" prop="customerId">
-              <el-select v-model="form.customerId" placeholder="选择客户" filterable style="width:100%">
+              <el-select v-model="form.customerId" placeholder="选择客户" filterable style="width:100%" @change="onCustomerChange">
                 <el-option v-for="c in customers" :key="c.id" :label="c.companyName" :value="c.id" />
               </el-select>
             </el-form-item>
@@ -639,6 +639,13 @@ const resetQuery = () => {
 }
 
 const customerNameOf = (id) => customers.value.find(c => c.id === id)?.companyName || '—'
+
+// 新建订单时，选择客户后自动回填客户管理中的备注
+const onCustomerChange = (customerId) => {
+  if (isEdit.value || !customerId) return
+  const customer = customers.value.find(c => c.id === customerId)
+  form.remark = customer?.remark || ''
+}
 
 // 每次打开弹窗都拉一次最新客户，避免新建的客户不出现在下拉里
 const loadCustomers = async () => {

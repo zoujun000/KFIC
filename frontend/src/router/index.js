@@ -45,10 +45,22 @@ const routes = [
         meta: { title: '订单管理', icon: 'Document' }
       },
       {
+        path: 'cargo-track',
+        name: 'CargoTrack',
+        component: () => import('@/views/cargo/CargoTrackView.vue'),
+        meta: { title: '货物跟踪', icon: 'Box' }
+      },
+      {
         path: 'quotes',
         name: 'Quotes',
         component: () => import('@/views/quote/QuoteView.vue'),
         meta: { title: '费用报价', icon: 'PriceTag' }
+      },
+      {
+        path: 'ship-locate',
+        name: 'ShipLocate',
+        component: () => import('@/views/shiplocate/ShipLocateView.vue'),
+        meta: { title: '船舶定位', icon: 'Ship' }
       },
       {
         path: 'quote-manage',

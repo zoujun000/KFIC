@@ -16,7 +16,7 @@
       >
         <el-menu-item v-for="item in menuItems" :key="item.path" :index="item.path">
           <el-icon><component :is="item.icon" /></el-icon>
-          <template #title>{{ item.title }}</template>
+          <template #title><span class="menu-title">{{ item.title }}</span></template>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -37,7 +37,7 @@
       >
         <el-menu-item v-for="item in menuItems" :key="item.path" :index="item.path">
           <el-icon><component :is="item.icon" /></el-icon>
-          <template #title>{{ item.title }}</template>
+          <template #title><span class="menu-title">{{ item.title }}</span></template>
         </el-menu-item>
       </el-menu>
     </el-drawer>
@@ -156,7 +156,9 @@ const menuItems = computed(() => {
     { path: '/announcements', title: '公告栏', icon: 'Bell' },
     { path: '/customers', title: '客户管理', icon: 'User' },
     { path: '/orders', title: '订单管理', icon: 'Document' },
+    { path: '/cargo-track', title: '货物跟踪', icon: 'Box' },
     { path: '/quotes', title: '费用报价', icon: 'Goods' },
+    { path: '/ship-locate', title: '船舶定位', icon: 'Ship' },
     { path: '/quote-manage', title: '报价费用管理', icon: 'EditPen', require: 'manager' },
     { path: '/port-charge-manage', title: '目的港费用管理', icon: 'EditPen', require: 'manager' },
     { path: '/upload', title: '上传模块', icon: 'Upload', require: 'manager' },
@@ -269,7 +271,7 @@ const handleCommand = async (cmd) => {
   border-radius: 8px;
   height: 44px;
   line-height: 44px;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 .aside :deep(.el-menu-item:hover) {
   background: rgba(255,255,255,0.06) !important;
@@ -307,6 +309,16 @@ const handleCommand = async (cmd) => {
 }
 .aside :deep(.el-menu-item.is-active .el-icon) {
   color: var(--color-primary);
+}
+
+/* 展开菜单时标题淡入，与侧边栏宽度动画同步 */
+.aside :deep(.menu-title) {
+  display: inline-block;
+  animation: menu-title-in 0.3s ease;
+}
+@keyframes menu-title-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 .header {
   background: var(--bg-white);

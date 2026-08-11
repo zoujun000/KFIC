@@ -178,7 +178,8 @@ export function mergeCarrierOptions(remoteList) {
       wyCode: carrier.wyCode || carrier.code,
       name: carrier.name,
       website: '',
-      trackUrl: carrier.trackUrl
+      trackUrl: carrier.trackUrl,
+      logo: ''
     }))
   }
 
@@ -191,6 +192,7 @@ export function mergeCarrierOptions(remoteList) {
       name: item.cnName || item.enName || item.code,
       website: item.cnWebsite || item.enWebsite || '',
       trackUrl: local?.trackUrl || null,
+      logo: item.logoPath || '',
       isSupport: !!item.isSupport
     }
   })
@@ -204,6 +206,7 @@ export function mergeCarrierOptions(remoteList) {
         name: carrier.name,
         website: '',
         trackUrl: carrier.trackUrl,
+        logo: '',
         isSupport: true
       })
     }

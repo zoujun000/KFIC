@@ -54,14 +54,37 @@
             size="large"
             filterable
             clearable
+            popper-class="track-option-popper"
             :placeholder="`输入单号自动识别，也可手动选择${companyLabel}`"
           >
+            <template #prefix>
+              <img
+                v-if="matchedSupplier?.logo"
+                :src="matchedSupplier.logo"
+                alt=""
+                class="select-logo"
+                @error="(event) => { event.target.style.display = 'none' }"
+              />
+            </template>
             <el-option
               v-for="option in currentOptions"
               :key="option.code"
               :label="`${option.code} · ${option.name}`"
               :value="option.code"
-            />
+            >
+              <div class="option-item">
+                <img
+                  v-if="option.logo"
+                  :src="option.logo"
+                  alt=""
+                  class="option-logo"
+                  loading="lazy"
+                  @error="(event) => { event.target.style.display = 'none' }"
+                />
+                <span v-else class="option-logo option-logo--text">{{ option.code.slice(0, 1) }}</span>
+                <span class="option-name">{{ option.code }} · {{ option.name }}</span>
+              </div>
+            </el-option>
           </el-select>
         </div>
 
@@ -598,6 +621,15 @@ onUnmounted(() => clearTimeout(recognizeTimer))
     0 0 0 4px rgba(59, 130, 246, 0.14);
 }
 
+.select-logo {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  object-fit: contain;
+  background: #f1f5f9;
+  flex: none;
+}
+
 .actions {
   display: flex;
   gap: 12px;
@@ -704,6 +736,36 @@ onUnmounted(() => clearTimeout(recognizeTimer))
 .status-link {
   font-size: 13px;
   flex: none;
+}
+
+:global(.track-option-popper .option-item) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+:global(.track-option-popper .option-logo) {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  object-fit: contain;
+  background: #f1f5f9;
+  flex: none;
+}
+
+:global(.track-option-popper .option-logo--text) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+}
+
+:global(.track-option-popper .option-name) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .status-enter-active {

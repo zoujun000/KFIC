@@ -2,6 +2,7 @@ package com.freight.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.freight.common.exception.BusinessException;
@@ -25,6 +26,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -79,7 +81,8 @@ public class FreightOrderServiceImpl implements FreightOrderService {
     }
 
     @Override
-    public void create(FreightOrderDTO dto) {
+    public FreightOrder create(FreightOrderDTO dto) {
+        requireExistingCustomer(dto.getCustomerId());
         FreightOrder order = new FreightOrder();
         BeanUtils.copyProperties(dto, order, "createdBy");
         order.setOrderNo(snowflakeIdGenerator.nextOrderNo());
@@ -87,6 +90,7 @@ public class FreightOrderServiceImpl implements FreightOrderService {
         order.setCreatedBy(requireCurrentUserId());
         orderMapper.insert(order);
         createOrderDir(order);
+        return order;
     }
 
     @Override
@@ -129,6 +133,16 @@ public class FreightOrderServiceImpl implements FreightOrderService {
     }
 
     @Override
+    public int updateStatusesByEta(LocalDate today) {
+        LocalDate effectiveDate = today == null ? LocalDate.now() : today;
+        UpdateWrapper<FreightOrder> wrapper = new UpdateWrapper<FreightOrder>()
+                .le("eta", effectiveDate)
+                .notIn("status", "已到港", "已提货")
+                .set("status", "已到港");
+        return orderMapper.update(null, wrapper);
+    }
+
+    @Override
     public void delete(Long id) {
         FreightOrder order = orderMapper.selectById(id);
         if (order == null) throw new BusinessException("订单不存在");
@@ -139,6 +153,9 @@ public class FreightOrderServiceImpl implements FreightOrderService {
         }
         int rows = orderMapper.deleteById(id);
         if (rows == 0) throw new BusinessException("删除失败");
+        // 有意不清理磁盘附件目录：订单为逻辑删除，文件保留便于恢复或人工归档；
+        // 代价是删除后附件目录成为孤儿文件，需人工清理
+        // （行为由 FreightOrderServiceImplSecurityTest.deletingOrderKeepsAttachmentsForLogicalDeletion 锁定）
     }
 
     @Override
@@ -162,6 +179,13 @@ public class FreightOrderServiceImpl implements FreightOrderService {
         Customer customer = customerMapper.selectByIdIncludeDeleted(order.getCustomerId());
         if (customer == null) throw new BusinessException("客户不存在");
         return attachmentPathService.resolveOrderDir(customer, order);
+    }
+
+    /** 校验客户存在（排除已逻辑删除），避免订单挂在无效客户上 */
+    private void requireExistingCustomer(Long customerId) {
+        if (customerId == null || customerMapper.selectById(customerId) == null) {
+            throw new BusinessException("客户不存在");
+        }
     }
 
     private Long requireCurrentUserId() {

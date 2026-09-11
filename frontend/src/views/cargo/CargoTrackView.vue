@@ -69,7 +69,7 @@
             <el-option
               v-for="option in currentOptions"
               :key="option.code"
-              :label="`${option.code} · ${option.name}`"
+              :label="`${option.displayCode || option.code} · ${option.name}`"
               :value="option.code"
             >
               <div class="option-item">
@@ -82,7 +82,7 @@
                   @error="(event) => { event.target.style.display = 'none' }"
                 />
                 <span v-else class="option-logo option-logo--text">{{ option.code.slice(0, 1) }}</span>
-                <span class="option-name">{{ option.code }} · {{ option.name }}</span>
+                <span class="option-name">{{ option.displayCode || option.code }} · {{ option.name }}</span>
               </div>
             </el-option>
           </el-select>
@@ -101,7 +101,7 @@
         <div v-if="activeNumber && matchedSupplier" class="status-card success">
           <div class="status-avatar">{{ matchedSupplier.code.slice(0, 2).toUpperCase() }}</div>
           <div class="status-body">
-            <div class="status-title">已识别 · {{ matchedSupplier.code }} {{ matchedSupplier.name }}</div>
+            <div class="status-title">已识别 · {{ matchedSupplier.displayCode || matchedSupplier.code }} {{ matchedSupplier.name }}</div>
             <div class="status-text">单号「{{ activeNumber }}」查询链接已就绪</div>
           </div>
           <el-link
@@ -187,6 +187,20 @@ const matchedSupplier = computed(() =>
   supplierCode.value ? currentOptions.value.find((option) => option.code === supplierCode.value) || null : null
 )
 
+// 船司 code/wyCode 在本地配置与维运网列表中可能不一致（如本地 OOCL ↔ 维运网 OOC），统一解析
+const resolveShippingOption = (carrier) => {
+  if (!carrier) return null
+  return (
+    shippingOptions.value.find(
+      (option) =>
+        option.code === carrier.code ||
+        option.wyCode === carrier.wyCode ||
+        option.code === carrier.wyCode ||
+        option.wyCode === carrier.code
+    ) || null
+  )
+}
+
 const activeNumber = computed(() => number.value.trim())
 
 const warningText = computed(() => {
@@ -223,9 +237,9 @@ const buildExpressUrl = (supplier, numberValue) => {
 
 // 航空运单号取前 3 位数字匹配航空公司
 const detectAirline = (value) => {
-  const digits = value.replace(/\D/g, '')
-  if (digits.length < 3) return null
-  return airlineByPrefix.value.get(digits.slice(0, 3)) || null
+  const compact = value.replace(/\s+/g, '')
+  if (!/^\d{3}/.test(compact)) return null
+  return airlineByPrefix.value.get(compact.slice(0, 3)) || null
 }
 
 const detectExpress = (value) => {
@@ -235,10 +249,12 @@ const detectExpress = (value) => {
 }
 
 let recognizeTimer = null
+let recognizeSeq = 0
 
 // 输入时优先本地规则识别，识别不到再调维运网接口
 const handleInput = () => {
   const value = number.value.trim()
+  const seq = ++recognizeSeq
   if (!value) {
     clearTimeout(recognizeTimer)
     return
@@ -248,16 +264,19 @@ const handleInput = () => {
   if (activeTab.value === 'shipping') {
     const localCarrier = detectCarrierByNumber(value)
     if (localCarrier) {
-      const option = shippingOptions.value.find(
-        (carrier) => carrier.wyCode === (localCarrier.wyCode || localCarrier.code)
-      )
+      const option = resolveShippingOption(localCarrier)
       supplierCode.value = option?.code || localCarrier.code
       return
     }
     recognizeTimer = setTimeout(async () => {
       try {
         const res = await weiyunTrackApi.recognize(value)
-        if (res?.result?.code) supplierCode.value = res.result.code
+        if (seq !== recognizeSeq) return
+        const result = res?.result
+        if (result?.code) {
+          const option = resolveShippingOption(result)
+          supplierCode.value = option?.code || result.code
+        }
       } catch {
         // 保持当前选择
       }
@@ -274,6 +293,7 @@ const handleInput = () => {
     recognizeTimer = setTimeout(async () => {
       try {
         const res = await weiyunTrackApi.recognizeAirline(value)
+        if (seq !== recognizeSeq) return
         const result = res?.result
         const code = result?.code || (Array.isArray(result) ? result[0]?.code : '')
         if (code) supplierCode.value = code
@@ -292,6 +312,7 @@ const handleInput = () => {
   recognizeTimer = setTimeout(async () => {
     try {
       const res = await weiyunTrackApi.recognizeExpress(value)
+      if (seq !== recognizeSeq) return
       const list = res?.result
       if (Array.isArray(list) && list.length === 1) supplierCode.value = list[0].code
     } catch {
@@ -387,6 +408,12 @@ const loadOptions = async () => {
 
   if (carrierRes.status === 'fulfilled' && carrierRes.value?.success && Array.isArray(carrierRes.value.result)) {
     shippingOptions.value = mergeCarrierOptions(carrierRes.value.result)
+    // 列表加载后旧选择可能因 code 映射变化而失效，重新解析一次
+    if (activeTab.value === 'shipping' && supplierCode.value && !shippingOptions.value.some((o) => o.code === supplierCode.value)) {
+      const localCarrier = detectCarrierByNumber(number.value)
+      const option = resolveShippingOption(localCarrier)
+      supplierCode.value = option?.code || ''
+    }
   }
 
   if (airlineRes.status === 'fulfilled' && airlineRes.value?.success && Array.isArray(airlineRes.value.result)) {
@@ -420,6 +447,7 @@ const switchTab = (name) => {
 }
 
 const reset = () => {
+  recognizeSeq++
   number.value = ''
   supplierCode.value = ''
   clearTimeout(recognizeTimer)

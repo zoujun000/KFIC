@@ -7,14 +7,17 @@ import com.freight.entity.FreightOrder;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.List;
 
 public interface FreightOrderService {
     IPage<FreightOrder> page(OrderQueryDTO query);
     FreightOrder getById(Long id);
-    void create(FreightOrderDTO dto);
+    FreightOrder create(FreightOrderDTO dto);
     void update(FreightOrderDTO dto);
     void updateStatus(Long id, String status);
+    /** 将 ETA 已到达且尚未提货的订单自动更新为“已到港” */
+    int updateStatusesByEta(LocalDate today);
     void delete(Long id);
 
     /** 查询 ETA 已过 1 天且未提货的订单（到港提醒） */

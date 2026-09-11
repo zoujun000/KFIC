@@ -25,6 +25,12 @@ public class QuoteExcelParser {
         {"COLOMBO", "CMB"},
         {"HAMBURG", "HAM"},
         {"CONSTANTA", "CDN"},
+        {"CONSTANTZA", "CDN"},
+        {"AARHUS", "AAR"}, {"COPENHAGEN", "CPH"},
+        {"HELSINKI", "HEL"}, {"ODESSA", "ODS"},
+        {"GOTHENBURG", "GTB"}, {"OSLO", "OSL"},
+        {"GENOVA", "GOA"}, {"ALIAGA", "ALI"}, {"ALSANCAK", "ALS"},
+        {"MALTA", "MLA"},
         {"FELIXSTOWE", "FLX"},
         {"LE HAVRE", "LHV"},
         {"ROTTERDAM", "RTM"},
@@ -32,6 +38,10 @@ public class QuoteExcelParser {
         {"GENOA", "GOA"},
         {"ISTANBUL", "IST"}, {"AMBARLI", "IST"},
         {"AUCKLAND", "ACK"},
+        {"BRISBANE", "BSB"},
+        {"CAUCEDO", "CAU"}, {"ACAJUTLA", "ACJ"},
+        {"PUERTO QUETZAL", "PTQ"}, {"MANAGUA", "MNG"},
+        {"SAN PEDRO SULA", "SPS"},
         {"SANTOS", "STS"},
         {"MANZANILLO", "MZL"},
         {"COLON FREE ZONE", "CLN"}, {"COLON", "CLN"},
@@ -40,6 +50,10 @@ public class QuoteExcelParser {
         {"HOCHIMINH", "SGN"}, {"HO CHI MINH", "SGN"},
         {"HAIPHONG", "HPH"},
         {"JAKARTA", "JKT"},
+        {"PENANG", "PNG"}, {"PASIR GUDANG", "PGD"},
+        {"YANGON", "YGN"}, {"CEBU", "CBU"}, {"DANANG", "DAN"},
+        {"SIHANOUKVILLE", "SIH"},
+        {"SHIMIZU", "SHI"}, {"HAKATA", "HKT"}, {"MOJI", "MOJ"},
         {"PORT KLANG", "PKG"},
         {"MANILA", "MNL"},
         {"TOKYO", "TYO"},
@@ -62,8 +76,10 @@ public class QuoteExcelParser {
         {"MOMBASA", "MBA"},
         {"TEMA", "TMA"},
         {"DURBAN", "DUR"},
+        {"JOHANNESBURG", "JNB"},
         {"CAPE TOWN", "CPT"},
         {"BUENOS AIRES", "BUE"},
+        {"MONTEVIDEO", "MVD"}, {"NAVEGANTES", "NAV"},
         {"GUAYAQUIL", "GYE"},
         {"BUENAVENTURA", "BUN"},
         {"CALLAO", "CLL"},
@@ -75,10 +91,13 @@ public class QuoteExcelParser {
         {"HAIFA", "HFA"},
         {"PIRAEUS", "PIR"},
         {"LIMASSOL", "LMS"},
+        {"THESSALONIKI", "SKG"},
         {"GDYNIA", "GDY"}, {"GDANSK", "GDN"},
         {"KEELUNG", "KEL"}, {"TAICHUNG", "TXG"}, {"KAOHSIUNG", "KHH"},
         {"LAEM CHABANG", "LCH"},
         {"LAT KRABANG", "LKB"},
+        {"PORT LOUIS", "PTL"},
+        {"CHICAGO", "CCG"}, {"PRAGUE", "PRG"},
         {"SOKHNA", "SOK"},
         {"DAMMAM", "DMM"},
         {"ABU DHABI", "AUH"},
@@ -114,8 +133,6 @@ public class QuoteExcelParser {
         for (FreightQuote q : quotes) {
             resolveTransitField(q.getWuchongFirstLeg(), q.getWuchongMotherVessel(),
                     codeIndex, q, "wuchong");
-            resolveTransitField(q.getBeishaFirstLeg(), q.getBeishaMotherVessel(),
-                    codeIndex, q, "beisha");
             resolveTransitField(q.getJiaoxinFirstLeg(), q.getJiaoxinMotherVessel(),
                     codeIndex, q, "jiaoxin");
         }
@@ -146,10 +163,6 @@ public class QuoteExcelParser {
                 target.setWuchongFirstLeg(transitQuote.getWuchongFirstLeg());
                 target.setWuchongMotherVessel(transitQuote.getWuchongMotherVessel());
             }
-            case "beisha" -> {
-                target.setBeishaFirstLeg(transitQuote.getBeishaFirstLeg());
-                target.setBeishaMotherVessel(transitQuote.getBeishaMotherVessel());
-            }
             case "jiaoxin" -> {
                 target.setJiaoxinFirstLeg(transitQuote.getJiaoxinFirstLeg());
                 target.setJiaoxinMotherVessel(transitQuote.getJiaoxinMotherVessel());
@@ -167,10 +180,10 @@ public class QuoteExcelParser {
         }
     }
 
-    // ── 黄埔/北沙/滘心 sheet 列索引（0-based）──
+    // ── 黄埔/滘心 sheet 列索引（0-based）──
     // A=国家 B=目的港 C=体积 D=中转 E=MIN
-    // F=乌冲OF G=乌冲头程 H=乌冲大船 I=北沙OF J=北沙头程 K=北沙大船
-    // L=滘心OF M=滘心头程 N=滘心大船 O=T/T P=CC Q=CARRIER R=REMARKS
+    // F=乌冲OF G=乌冲头程 H=乌冲大船 I=滘心OF J=滘心头程 K=滘心大船
+    // L=T/T M=CC N=CARRIER O=注意事项
     private static final int COL_COUNTRY = 0;
     private static final int COL_DEST = 1;
     private static final int COL_VOLUME = 2;
@@ -179,15 +192,13 @@ public class QuoteExcelParser {
     private static final int COL_OF_WUCHONG = 5;
     private static final int COL_WUCHONG_FIRST = 6;
     private static final int COL_WUCHONG_MOTHER = 7;
-    private static final int COL_OF_BEISHA = 8;
-    private static final int COL_BEISHA_FIRST = 9;
-    private static final int COL_BEISHA_MOTHER = 10;
-    private static final int COL_OF_JIAOXIN = 11;
-    private static final int COL_JIAOXIN_FIRST = 12;
-    private static final int COL_JIAOXIN_MOTHER = 13;
-    private static final int COL_TT = 14;
-    private static final int COL_CARRIER = 16;
-    private static final int COL_REMARKS = 17;
+    private static final int COL_OF_JIAOXIN = 8;
+    private static final int COL_JIAOXIN_FIRST = 9;
+    private static final int COL_JIAOXIN_MOTHER = 10;
+    private static final int COL_TT = 11;
+    private static final int COL_CC = 12;
+    private static final int COL_CARRIER = 13;
+    private static final int COL_REMARKS = 14;
 
     // ── 南沙仓 sheet 列索引（0-based）──
     // A=目的港 B=体积 C=中转 D=MIN E=OF F=船期 G=T/T H=CC I=CARRIER J=仓库 K=REMARKS
@@ -198,9 +209,22 @@ public class QuoteExcelParser {
     private static final int NS_COL_OF = 4;
     private static final int NS_COL_SCHEDULE = 5;
     private static final int NS_COL_TT = 6;
+    private static final int NS_COL_CC = 7;
     private static final int NS_COL_CARRIER = 8;
     private static final int NS_COL_WAREHOUSE = 9;
     private static final int NS_COL_REMARKS = 10;
+
+    private static final String VOLUME_NUMBER = "\\d+(?:\\.\\d+)?";
+    private static final String VOLUME_BOUND = "(?:[<>≤≥＜＞]=?\\s*)?" + VOLUME_NUMBER;
+    private static final Pattern VOLUME_LINE_PATTERN = Pattern.compile(
+        "(?i)^\\s*(?:CASE\\s+BY\\s+CASE|"
+            + VOLUME_BOUND
+            + "(?:\\s*(?:CBM|TONS?|CASE))?"
+            + "(?:\\s*(?:-|～|~|至)\\s*"
+            + VOLUME_BOUND
+            + "(?:\\s*(?:CBM|TONS?|CASE))?)?"
+            + "(?:\\s*/\\s*" + VOLUME_NUMBER + "\\s*TONS?)?"
+            + "(?:\\s*(?:以内|以上|内|\\+))?)\\s*$");
 
     /**
      * 解析Excel文件，提取所有报价行
@@ -229,9 +253,7 @@ public class QuoteExcelParser {
         return result;
     }
 
-    /**
-     * 解析黄埔/北沙/滘心 sheet（数据从第9行开始，索引8）
-     */
+    /** 解析黄埔/滘心 sheet（数据从第9行开始，索引8） */
     private static List<FreightQuote> parseMainSheet(Sheet sheet, String sheetName,
                                                       LocalDate validFrom, LocalDate validTo) {
         List<FreightQuote> list = new ArrayList<>();
@@ -240,10 +262,9 @@ public class QuoteExcelParser {
         String currentCarrier = null;
         String currentTT = null;
         String currentRemarks = null;
-        String currentVia = null;
+        String currentVia = "";
         // 头程/大船 carry-forward（第一行有，后续行单元格为空时沿用上一行）
         String curWuchongFirst = null, curWuchongMother = null;
-        String curBeishaFirst = null, curBeishaMother = null;
         String curJiaoxinFirst = null, curJiaoxinMother = null;
 
         for (int r = 8; r <= sheet.getLastRowNum(); r++) {
@@ -258,15 +279,17 @@ public class QuoteExcelParser {
             String ofWuchong = cleanCell(row, COL_OF_WUCHONG);
             String wuchongFirst = cleanCell(row, COL_WUCHONG_FIRST);
             String wuchongMother = cleanCell(row, COL_WUCHONG_MOTHER);
-            String ofBeisha = cleanCell(row, COL_OF_BEISHA);
-            String beishaFirst = cleanCell(row, COL_BEISHA_FIRST);
-            String beishaMother = cleanCell(row, COL_BEISHA_MOTHER);
             String ofJiaoxin = cleanCell(row, COL_OF_JIAOXIN);
             String jiaoxinFirst = cleanCell(row, COL_JIAOXIN_FIRST);
             String jiaoxinMother = cleanCell(row, COL_JIAOXIN_MOTHER);
             String tt = cleanCell(row, COL_TT);
+            String cc = cleanCell(row, COL_CC);
             String carrier = cleanCell(row, COL_CARRIER);
             String remarks = cleanCell(row, COL_REMARKS);
+
+            validateLength(tt, 100, r + 1, "T/T");
+            validateLength(cc, 50, r + 1, "CC");
+            validateLength(carrier, 100, r + 1, "CARRIER");
 
             // 更新 carry-forward 值
             if (!country.isEmpty()) currentCountry = country;
@@ -277,14 +300,17 @@ public class QuoteExcelParser {
             if (!via.isEmpty()) currentVia = via;
             if (!wuchongFirst.isEmpty()) curWuchongFirst = wuchongFirst;
             if (!wuchongMother.isEmpty()) curWuchongMother = wuchongMother;
-            if (!beishaFirst.isEmpty()) curBeishaFirst = beishaFirst;
-            if (!beishaMother.isEmpty()) curBeishaMother = beishaMother;
             if (!jiaoxinFirst.isEmpty()) curJiaoxinFirst = jiaoxinFirst;
             if (!jiaoxinMother.isEmpty()) curJiaoxinMother = jiaoxinMother;
 
             // 跳过无体积区间的行（非数据行）
             if (volume.isEmpty() || currentDest == null) continue;
+            // Excel 合并单元格产生的辅助行只有体积和船期公式，没有报价数据
+            if (dest.isEmpty() && !hasQuoteValues(via, minStr, ofWuchong, ofJiaoxin, tt, cc, carrier)) {
+                continue;
+            }
             if (!isVolumeLine(volume)) continue;
+            validateLength(volume, 50, r + 1, "体积分段");
 
             FreightQuote q = new FreightQuote();
             q.setSourceSheet(sheetName);
@@ -296,13 +322,11 @@ public class QuoteExcelParser {
             q.setOfWuchong(ofWuchong.isEmpty() ? null : ofWuchong);
             q.setWuchongFirstLeg(wuchongFirst.isEmpty() ? curWuchongFirst : wuchongFirst);
             q.setWuchongMotherVessel(wuchongMother.isEmpty() ? curWuchongMother : wuchongMother);
-            q.setOfBeisha(ofBeisha.isEmpty() ? null : filterFormula(ofBeisha));
-            q.setBeishaFirstLeg(beishaFirst.isEmpty() ? curBeishaFirst : beishaFirst);
-            q.setBeishaMotherVessel(beishaMother.isEmpty() ? curBeishaMother : beishaMother);
             q.setOfJiaoxin(ofJiaoxin.isEmpty() ? null : ofJiaoxin);
             q.setJiaoxinFirstLeg(jiaoxinFirst.isEmpty() ? curJiaoxinFirst : jiaoxinFirst);
             q.setJiaoxinMotherVessel(jiaoxinMother.isEmpty() ? curJiaoxinMother : jiaoxinMother);
             q.setTransitTime(currentTT);
+            q.setCc(cc.isEmpty() ? null : cc);
             q.setCarrier(currentCarrier);
             q.setRemarks(currentRemarks);
             q.setValidFrom(validFrom);
@@ -336,9 +360,14 @@ public class QuoteExcelParser {
             String of = cleanCell(row, NS_COL_OF);
             String schedule = cleanCell(row, NS_COL_SCHEDULE);
             String tt = cleanCell(row, NS_COL_TT);
+            String cc = cleanCell(row, NS_COL_CC);
             String carrier = cleanCell(row, NS_COL_CARRIER);
             String warehouse = cleanCell(row, NS_COL_WAREHOUSE);
             String remarks = cleanCell(row, NS_COL_REMARKS);
+
+            validateLength(tt, 100, r + 1, "T/T");
+            validateLength(cc, 50, r + 1, "CC");
+            validateLength(carrier, 100, r + 1, "CARRIER");
 
             if (!dest.isEmpty()) currentDest = dest;
             if (!carrier.isEmpty()) currentCarrier = carrier;
@@ -348,6 +377,7 @@ public class QuoteExcelParser {
 
             if (volume.isEmpty() || currentDest == null) continue;
             if (!isVolumeLine(volume)) continue;
+            validateLength(volume, 50, r + 1, "体积分段");
 
             FreightQuote q = new FreightQuote();
             q.setSourceSheet(sheetName);
@@ -357,11 +387,11 @@ public class QuoteExcelParser {
             q.setVia(via.isEmpty() ? null : via);
             q.setMinCharge(parseIntSafe(minStr));
             q.setOfWuchong(null);
-            q.setOfBeisha(null);
             q.setOfJiaoxin(of.isEmpty() ? null : of);
             // 船期存到滘心头程，当前行为空时用 carry-forward
             q.setJiaoxinFirstLeg(schedule.isEmpty() ? currentSchedule : schedule);
             q.setTransitTime(currentTT);
+            q.setCc(cc.isEmpty() ? null : cc);
             q.setCarrier(currentCarrier);
             q.setRemarks(currentRemarks);
             q.setValidFrom(validFrom);
@@ -372,20 +402,21 @@ public class QuoteExcelParser {
         return list;
     }
 
-    /** 过滤公式引用（如 =H9），公式单元格已经通过 getCellString 处理，这里处理可能残留的 = 前缀 */
-    private static String filterFormula(String s) {
-        if (s == null || s.isEmpty()) return null;
-        if (s.startsWith("=") || s.equals("\\")) return null;
-        return s;
-    }
-
     /** 判断是否是体积区间数据行 */
     private static boolean isVolumeLine(String s) {
         if (s == null || s.isBlank()) return false;
-        String u = s.toUpperCase();
-        return u.contains("CBM") || u.contains("以内") || u.contains("以上")
-            || u.contains("-") || u.contains(">") || u.contains("TONS")
-            || u.contains("CASE");
+        String[] lines = s.replace('\r', '\n').split("\\n");
+        for (String line : lines) {
+            if (!VOLUME_LINE_PATTERN.matcher(line).matches()) return false;
+        }
+        return true;
+    }
+
+    private static boolean hasQuoteValues(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) return true;
+        }
+        return false;
     }
 
     /**
@@ -467,6 +498,12 @@ public class QuoteExcelParser {
             };
         } catch (Exception e) {
             return "";
+        }
+    }
+
+    private static void validateLength(String value, int max, int rowNo, String column) {
+        if (value != null && value.length() > max) {
+            throw new IllegalArgumentException("第" + rowNo + "行" + column + "超过" + max + "个字符");
         }
     }
 

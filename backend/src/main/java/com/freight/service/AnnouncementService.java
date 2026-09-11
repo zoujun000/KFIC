@@ -8,7 +8,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 public interface AnnouncementService {
-    IPage<Announcement> page(Integer pageNum, Integer pageSize);
+    IPage<Announcement> page(Integer pageNum, Integer pageSize, String title);
     Announcement getById(Long id);
     void create(Announcement announcement);
     void update(Long id, Announcement announcement);

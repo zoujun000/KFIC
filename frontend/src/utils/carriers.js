@@ -176,6 +176,7 @@ export function mergeCarrierOptions(remoteList) {
     return carriers.map((carrier) => ({
       code: carrier.wyCode || carrier.code,
       wyCode: carrier.wyCode || carrier.code,
+      displayCode: carrier.wyCode || carrier.code,
       name: carrier.name,
       website: '',
       trackUrl: carrier.trackUrl,
@@ -188,7 +189,8 @@ export function mergeCarrierOptions(remoteList) {
     const local = localByWyCode.get(item.code)
     return {
       code: item.code,
-      wyCode: item.code,
+      wyCode: item.wyCode || item.code,
+      displayCode: item.wyCode || item.code,
       name: item.cnName || item.enName || item.code,
       website: item.cnWebsite || item.enWebsite || '',
       trackUrl: local?.trackUrl || null,
@@ -203,6 +205,7 @@ export function mergeCarrierOptions(remoteList) {
       merged.push({
         code: carrier.code,
         wyCode,
+        displayCode: wyCode,
         name: carrier.name,
         website: '',
         trackUrl: carrier.trackUrl,

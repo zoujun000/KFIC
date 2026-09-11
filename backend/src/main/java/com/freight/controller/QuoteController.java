@@ -33,7 +33,7 @@ public class QuoteController {
 
     @Operation(summary = "上传报价Excel")
     @PostMapping("/upload")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MAINTAINER')")
     public Result<QuoteUploadLog> upload(@RequestParam("file") MultipartFile file) {
         return Result.success(quoteService.uploadAndParse(file));
     }

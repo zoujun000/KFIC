@@ -5,6 +5,7 @@ import com.freight.service.AisStreamService;
 import com.freight.vo.ShipLocateSearchVO;
 import com.freight.vo.ShipLocateStatusVO;
 import com.freight.vo.ShipLocateVO;
+import com.freight.vo.ShipPortCallVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,15 @@ public class ShipLocateController {
             return Result.error("未找到该船：索引随 AIS 实时数据持续积累，可稍后重试或确认船名/MMSI 正确");
         }
         return Result.success(vo);
+    }
+
+    @Operation(summary = "获取船舶历史挂靠记录")
+    @GetMapping("/{mmsi}/port-calls")
+    public Result<List<ShipPortCallVO>> portCalls(
+            @PathVariable String mmsi,
+            @RequestParam(defaultValue = "7") Integer days) {
+        int queryDays = Math.max(1, Math.min(days, 30));
+        return Result.success(aisStreamService.portCalls(mmsi, queryDays));
     }
 
     @Operation(summary = "获取 AIS 数据流连接状态")

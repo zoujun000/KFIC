@@ -16,10 +16,10 @@
           </el-select>
         </el-form-item>
         <el-form-item label="仓库">
-          <el-select v-model="query.warehouse" placeholder="全部仓库" clearable style="width:130px">
+          <el-select v-model="query.warehouse" placeholder="全部仓库" clearable style="width:130px"
+            @change="onWarehouseChange">
             <el-option label="全部" value="" />
             <el-option label="乌冲" value="乌冲" />
-            <el-option label="北沙" value="北沙" />
             <el-option label="滘心/南沙" value="滘心" />
           </el-select>
         </el-form-item>
@@ -42,6 +42,9 @@
         <el-form-item>
           <el-button type="primary" :loading="searching" @click="doSearch">查询报价</el-button>
           <el-button @click="resetQuery">重置</el-button>
+          <el-button type="warning" :icon="Edit" @click="openTemplateDialog">
+            编辑报价模版
+          </el-button>
           <el-button type="success" :icon="Download" @click="downloadExcel" :disabled="results.length === 0">
             下载Excel
           </el-button>
@@ -102,9 +105,6 @@
         <el-table-column label="乌冲 OF" width="100">
           <template #default="{ row }"><price-cell :val="row.ofWuchong" /></template>
         </el-table-column>
-        <el-table-column label="北沙 OF" width="100">
-          <template #default="{ row }"><price-cell :val="row.ofBeisha" /></template>
-        </el-table-column>
         <el-table-column label="滘心/南沙" width="110">
           <template #default="{ row }"><price-cell :val="row.ofJiaoxin" /></template>
         </el-table-column>
@@ -114,8 +114,14 @@
             <span v-else>{{ formatTT(row.transitTime) }}</span>
           </template>
         </el-table-column>
+        <el-table-column prop="cc" label="CC" width="70" />
         <el-table-column prop="carrier" label="船公司" width="110" show-overflow-tooltip />
-        <el-table-column prop="vesselVoyage" label="船名航次" width="120" show-overflow-tooltip />
+        <el-table-column label="船名航次" min-width="220" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span v-if="row.upcomingScheduleText" style="color:#e6a23c;font-weight:600">{{ row.upcomingScheduleText }}</span>
+            <span v-else>{{ row.vesselVoyage || '—' }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="有效期" width="150">
           <template #default="{ row }">
             <span style="font-size:11px;color:#909399">{{ row.validFrom }} ~ {{ row.validTo }}</span>
@@ -147,6 +153,43 @@
       <el-empty description="请选择目的港并输入体积后点击查询" />
     </el-card>
 
+    <!-- 复制报价模版编辑 -->
+    <el-dialog v-model="templateVisible" title="编辑报价模版" width="760px" destroy-on-close>
+      <div class="template-hint">打开或关闭报价行，修改显示名称/固定内容，用上下按钮调整顺序；保存后点击报价行的“复制”即可应用。</div>
+      <el-radio-group v-model="currentTemplateWarehouse" size="default" class="template-warehouse-tabs">
+        <el-radio-button value="wuchong">乌冲模版</el-radio-button>
+        <el-radio-button value="jiaoxin">滘心/南沙模版</el-radio-button>
+      </el-radio-group>
+      <div class="template-editor">
+        <div v-for="(item, index) in templateItems" :key="item.id" class="template-item">
+          <el-switch v-model="item.enabled" />
+          <span class="template-item-name">{{ item.name }}</span>
+          <el-input v-if="item.kind === 'static' || item.kind === 'custom'" v-model="item.content"
+            :placeholder="item.kind === 'custom' ? '输入自定义说明' : '输入固定内容'" />
+          <el-input v-else v-model="item.label" placeholder="显示名称" />
+          <el-tooltip content="上移" placement="top">
+            <el-button :icon="ArrowUp" circle :disabled="index === 0" @click="moveTemplateItem(index, -1)" />
+          </el-tooltip>
+          <el-tooltip content="下移" placement="top">
+            <el-button :icon="ArrowDown" circle :disabled="index === templateItems.length - 1" @click="moveTemplateItem(index, 1)" />
+          </el-tooltip>
+          <el-tooltip v-if="item.kind === 'custom'" content="删除" placement="top">
+            <el-button :icon="Delete" type="danger" circle @click="removeTemplateItem(index)" />
+          </el-tooltip>
+        </div>
+      </div>
+      <el-button :icon="Plus" @click="addTemplateItem">新增说明行</el-button>
+      <div class="template-preview">
+        <div class="template-preview-title">预览</div>
+        <pre>{{ templatePreview }}</pre>
+      </div>
+      <template #footer>
+        <el-button @click="resetTemplate">恢复默认</el-button>
+        <el-button @click="templateVisible = false">取消</el-button>
+        <el-button type="primary" :loading="templateSaving" @click="saveTemplate">保存</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 编辑对话框 -->
     <el-dialog v-model="editVisible" title="编辑报价" width="600px" destroy-on-close>
       <el-form :model="editForm" label-width="100px">
@@ -171,15 +214,6 @@
         <el-form-item label="乌冲大船">
           <el-input v-model="editForm.wuchongMotherVessel" />
         </el-form-item>
-        <el-form-item label="北沙 OF">
-          <el-input v-model="editForm.ofBeisha" />
-        </el-form-item>
-        <el-form-item label="北沙头程">
-          <el-input v-model="editForm.beishaFirstLeg" />
-        </el-form-item>
-        <el-form-item label="北沙大船">
-          <el-input v-model="editForm.beishaMotherVessel" />
-        </el-form-item>
         <el-form-item label="滘心 OF">
           <el-input v-model="editForm.ofJiaoxin" />
         </el-form-item>
@@ -191,6 +225,9 @@
         </el-form-item>
         <el-form-item label="时效">
           <el-input v-model="editForm.transitTime" />
+        </el-form-item>
+        <el-form-item label="CC">
+          <el-input v-model="editForm.cc" />
         </el-form-item>
         <el-form-item label="船公司">
           <el-input v-model="editForm.carrier" />
@@ -217,10 +254,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, defineComponent, h } from 'vue'
-import { ElMessage } from 'element-plus'
-import { CopyDocument, Edit, Delete, Download } from '@element-plus/icons-vue'
-import { quoteApi, portChargeApi } from '@/api'
+import { ref, reactive, onMounted, defineComponent, h, computed } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { CopyDocument, Edit, Delete, Download, Plus, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
+import { quoteApi, quoteTemplateApi, portChargeApi } from '@/api'
 
 defineOptions({ name: 'Quotes' })
 
@@ -249,9 +286,8 @@ const editingId = ref(null)
 const editForm = reactive({
   country: '', destination: '', volumeRange: '', via: '',
   ofWuchong: '', wuchongFirstLeg: '', wuchongMotherVessel: '',
-  ofBeisha: '', beishaFirstLeg: '', beishaMotherVessel: '',
   ofJiaoxin: '', jiaoxinFirstLeg: '', jiaoxinMotherVessel: '',
-  transitTime: '', carrier: '', vesselVoyage: '', remarks: '',
+  transitTime: '', cc: '', carrier: '', vesselVoyage: '', remarks: '',
   validFrom: '', validTo: ''
 })
 
@@ -312,8 +348,7 @@ const resolveResultsTransit = async () => {
       const m = (val || '').match(/见\s*([A-Z]{2,4})\s*船期/)
       return m ? m[1] : null
     }
-    let transitCode = checkField(row.wuchongFirstLeg) || checkField(row.beishaFirstLeg)
-                      || checkField(row.jiaoxinFirstLeg)
+    let transitCode = checkField(row.wuchongFirstLeg) || checkField(row.jiaoxinFirstLeg)
     if (!transitCode) continue
 
     try {
@@ -340,6 +375,129 @@ const resetQuery = () => {
 }
 
 const copyingRow = ref(null)
+const templateVisible = ref(false)
+const templateSaving = ref(false)
+const currentTemplateWarehouse = ref('wuchong')
+const defaultTemplateItems = [
+  { id: 'route', name: '起运港与目的港', kind: 'route', label: '广州', enabled: true },
+  { id: 'of', name: '海运费', kind: 'of', label: 'O/F 海运费', enabled: true },
+  { id: 'doc', name: '文件费', kind: 'static', content: 'DOC 文件费:CNY 300/BL', enabled: true },
+  { id: 'cdf', name: '单证报关费', kind: 'static', content: 'CDF 单证报关:CNY 300/BL(六个品名一份报关费)', enabled: true },
+  { id: 'warehouse-fee', name: '进仓费', kind: 'static', content: '进仓费: CNY 100(办单司机现场给)', enabled: true },
+  { id: 'schedule', name: '船期', kind: 'schedule', label: '船期', enabled: true },
+  { id: 'transit', name: '时效', kind: 'transit', label: '时效', enabled: true },
+  { id: 'cif', name: 'CIF总价', kind: 'cif', label: 'CIF总价', enabled: true },
+  { id: 'remarks', name: '备注', kind: 'remarks', label: '备注', enabled: true },
+  { id: 'port-detail', name: '目的港费用明细', kind: 'portDetail', label: '目的港费用明细', enabled: true },
+  { id: 'port-total', name: '目的港费用总价', kind: 'portTotal', label: '目的港费用总价', enabled: true }
+]
+const templateItemsByWarehouse = ref({
+  wuchong: copyDefaultTemplateItems(),
+  jiaoxin: copyDefaultTemplateItems()
+})
+const templateItems = computed(() => templateItemsByWarehouse.value[currentTemplateWarehouse.value])
+
+const warehouseTemplateKey = (warehouse) => warehouse === '滘心' || warehouse === '滘心/南沙' ? 'jiaoxin' : 'wuchong'
+
+const onWarehouseChange = (warehouse) => {
+  if (warehouse) currentTemplateWarehouse.value = warehouseTemplateKey(warehouse)
+}
+
+function copyDefaultTemplateItems() {
+  return defaultTemplateItems.map(item => ({ ...item }))
+}
+
+const buildQuoteText = (values, items = templateItems.value) => items
+  .filter(item => item.enabled)
+  .map(item => {
+    if (item.kind === 'route') return `${item.label || ''}${values.warehouseName} - ${values.destination}`
+    if (item.kind === 'of') return `${item.label || 'O/F 海运费'}: USD ${values.of}/RT`
+    if (item.kind === 'static' || item.kind === 'custom') return item.content || ''
+    if (item.kind === 'schedule') return `${item.label || '船期'}: ${values.schedule}`
+    if (item.kind === 'transit') return `${item.label || '时效'}:开大船起 ${values.transitTime} 天到港`
+    if (item.kind === 'cif') return `${values.volume}个方${item.label || 'CIF总价'}: ${values.cifTotal}`
+    if (item.kind === 'remarks') return `${item.label || '备注'} ：${values.remarks}`
+    if (item.kind === 'portDetail') return `${item.label || '目的港费用明细'}(${values.volume}CBM)[${values.clientLabel}]:\n${values.portDetail}`
+    if (item.kind === 'portTotal') return `${item.label || '目的港费用总价'}[${values.clientLabel}]: ${values.portTotal}`
+    return ''
+  })
+  .filter(Boolean)
+  .join('\n')
+
+const templatePreview = computed(() => buildQuoteText({
+  warehouseName: ' 乌冲', destination: 'LOS ANGELES', of: '120',
+  schedule: '头程周三 大船周五', transitTime: '18', volume: '2',
+  cifTotal: 'USD 240.00 + CNY 600(文件费+报关费)', remarks: '以实际账单为准',
+  portDetail: '码头费: USD 30/RT\n', clientLabel: '直客', portTotal: 'USD 60.00'
+}))
+
+const loadQuoteTemplate = async () => {
+  try {
+    const res = await quoteTemplateApi.get()
+    if (!res.data?.template) return
+    const savedTemplate = JSON.parse(res.data.template)
+    if (Array.isArray(savedTemplate.items)) {
+      templateItemsByWarehouse.value = {
+        wuchong: savedTemplate.items,
+        jiaoxin: savedTemplate.items.map(item => ({ ...item }))
+      }
+    } else if (savedTemplate.wuchong || savedTemplate.jiaoxin) {
+      templateItemsByWarehouse.value = {
+        wuchong: Array.isArray(savedTemplate.wuchong) ? savedTemplate.wuchong : copyDefaultTemplateItems(),
+        jiaoxin: Array.isArray(savedTemplate.jiaoxin) ? savedTemplate.jiaoxin : copyDefaultTemplateItems()
+      }
+    }
+  } catch (_) { /* 首次使用时采用默认模版 */ }
+}
+
+const openTemplateDialog = async () => {
+  currentTemplateWarehouse.value = warehouseTemplateKey(query.warehouse || '乌冲')
+  await loadQuoteTemplate()
+  templateVisible.value = true
+}
+
+const saveTemplate = async () => {
+  if (!templateItems.value.some(item => item.enabled)) {
+    ElMessage.warning('请至少保留一项报价内容')
+    return
+  }
+  templateSaving.value = true
+  try {
+    await quoteTemplateApi.save(JSON.stringify(templateItemsByWarehouse.value))
+    ElMessage.success('报价模版已保存')
+    templateVisible.value = false
+  } catch (_) {
+    ElMessage.error('报价模版保存失败')
+  } finally {
+    templateSaving.value = false
+  }
+}
+
+const resetTemplate = async () => {
+  try {
+    await ElMessageBox.confirm('恢复后将覆盖当前模版内容，是否继续？', '恢复默认模版', {
+      type: 'warning', confirmButtonText: '恢复', cancelButtonText: '取消'
+    })
+    templateItemsByWarehouse.value[currentTemplateWarehouse.value] = copyDefaultTemplateItems()
+  } catch (_) { /* cancelled */ }
+}
+
+const moveTemplateItem = (index, offset) => {
+  const target = index + offset
+  if (target < 0 || target >= templateItems.value.length) return
+  const [item] = templateItems.value.splice(index, 1)
+  templateItems.value.splice(target, 0, item)
+}
+
+const addTemplateItem = () => {
+  templateItems.value.push({
+    id: `custom-${Date.now()}`, name: '自定义说明', kind: 'custom', content: '', enabled: true
+  })
+}
+
+const removeTemplateItem = (index) => {
+  templateItems.value.splice(index, 1)
+}
 
 // 根据选中的仓库解析 OF 值和船期
 const getWarehouseInfo = (row) => {
@@ -351,7 +509,6 @@ const getWarehouseInfo = (row) => {
 
   const warehouses = [
     { name: '乌冲', of: parseOf(row.ofWuchong), firstLeg: row.wuchongFirstLeg, mother: row.wuchongMotherVessel },
-    { name: '北沙', of: parseOf(row.ofBeisha), firstLeg: row.beishaFirstLeg, mother: row.beishaMotherVessel },
     { name: '滘心', of: parseOf(row.ofJiaoxin), firstLeg: row.jiaoxinFirstLeg, mother: row.jiaoxinMotherVessel }
   ].filter(w => w.of !== null)
 
@@ -386,7 +543,6 @@ const copyQuote = async (row) => {
   if (!transitMatch && wh) {
     const others = [
       row.wuchongFirstLeg, row.wuchongMotherVessel,
-      row.beishaFirstLeg, row.beishaMotherVessel,
       row.jiaoxinFirstLeg, row.jiaoxinMotherVessel
     ].filter(Boolean).join('')
     transitMatch = transitPattern.exec(others)
@@ -410,16 +566,15 @@ const copyQuote = async (row) => {
         // 匹配同仓库
         const findSchedule = (q) => {
           if (wh?.name === '乌冲') return { fl: q.wuchongFirstLeg, mv: q.wuchongMotherVessel, tt: q.transitTime }
-          if (wh?.name === '北沙') return { fl: q.beishaFirstLeg, mv: q.beishaMotherVessel, tt: q.transitTime }
           if (wh?.name === '滘心') return { fl: q.jiaoxinFirstLeg, mv: q.jiaoxinMotherVessel, tt: q.transitTime }
           return null
         }
         let sched = findSchedule(tq)
         if (!sched) {
           for (const qq of tRes.data) {
-            if (qq.wuchongFirstLeg || qq.beishaFirstLeg || qq.jiaoxinFirstLeg) {
-              sched = { fl: qq.wuchongFirstLeg || qq.beishaFirstLeg || qq.jiaoxinFirstLeg,
-                       mv: qq.wuchongMotherVessel || qq.beishaMotherVessel || qq.jiaoxinMotherVessel,
+            if (qq.wuchongFirstLeg || qq.jiaoxinFirstLeg) {
+              sched = { fl: qq.wuchongFirstLeg || qq.jiaoxinFirstLeg,
+                       mv: qq.wuchongMotherVessel || qq.jiaoxinMotherVessel,
                        tt: qq.transitTime }
               break
             }
@@ -448,7 +603,9 @@ const copyQuote = async (row) => {
   const parts = []
   if (firstLeg) parts.push('头程' + firstLeg)
   if (mother) parts.push('大船' + mother)
-  const scheduleText = parts.length ? parts.join('') : '—'
+  const scheduleText = row.upcomingScheduleText
+    ? '大船' + row.upcomingScheduleText
+    : (parts.length ? parts.join('') : '—')
 
   // 目的港费用
   const parseDestForCharge = (dest) => {
@@ -524,18 +681,21 @@ const copyQuote = async (row) => {
   const clientLabel = isDirect ? '直客' : '同行'
   const whName = wh ? wh.name : ''
 
-  const text =
-`广州${whName ? ' ' + whName : ''} - ${row.destination}${row.portCode ? ' [' + row.portCode + ']' : ''}
-O/F 海运费: USD ${of}/RT
-DOC 文件费:CNY 300/BL
-CDF 单证报关:CNY 300/BL(六个品名一份报关费)
-进仓费: CNY 100(办单司机现场给)
-船期: ${scheduleText}
-时效:开大船起 ${transitTime} 天到港
-${volume}个方CIF总价: ${cifTotal}
-备注 ：${row.remarks || ''}
-目的港费用明细(${volume}CBM)[${clientLabel}]:
-${portDetailText}目的港费用总价[${clientLabel}]: ${portTotal}`
+  const values = {
+    destination: row.destination || '',
+    warehouseName: whName ? ' ' + whName : '',
+    of,
+    schedule: scheduleText,
+    transitTime,
+    volume,
+    cifTotal,
+    remarks: row.remarks || '',
+    portDetail: portDetailText,
+    clientLabel,
+    portTotal
+  }
+  const selectedTemplateKey = warehouseTemplateKey(whName || query.warehouse)
+  const text = buildQuoteText(values, templateItemsByWarehouse.value[selectedTemplateKey])
 
   // 复制到剪贴板
   const doCopy = () => {
@@ -583,13 +743,11 @@ const openEditDialog = (row) => {
     ofWuchong: row.ofWuchong || '',
     wuchongFirstLeg: row.wuchongFirstLeg || '',
     wuchongMotherVessel: row.wuchongMotherVessel || '',
-    ofBeisha: row.ofBeisha || '',
-    beishaFirstLeg: row.beishaFirstLeg || '',
-    beishaMotherVessel: row.beishaMotherVessel || '',
     ofJiaoxin: row.ofJiaoxin || '',
     jiaoxinFirstLeg: row.jiaoxinFirstLeg || '',
     jiaoxinMotherVessel: row.jiaoxinMotherVessel || '',
     transitTime: row.transitTime || '',
+    cc: row.cc || '',
     carrier: row.carrier || '',
     vesselVoyage: row.vesselVoyage || '',
     remarks: row.remarks || '',
@@ -633,16 +791,14 @@ const downloadExcel = () => {
   const headers = [
     '国家', '目的港', '代码', '体积区间', '中转',
     '乌冲OF', '乌冲头程', '乌冲大船',
-    '北沙OF', '北沙头程', '北沙大船',
     '滘心OF', '滘心头程', '滘心大船',
-    '时效', '船公司', '船名航次', '有效期从', '有效期至', '备注'
+    '时效', 'CC', '船公司', '船名航次', '有效期从', '有效期至', '备注'
   ]
   const fields = [
     'country', 'destination', 'portCode', 'volumeRange', 'via',
     'ofWuchong', 'wuchongFirstLeg', 'wuchongMotherVessel',
-    'ofBeisha', 'beishaFirstLeg', 'beishaMotherVessel',
     'ofJiaoxin', 'jiaoxinFirstLeg', 'jiaoxinMotherVessel',
-    'transitTime', 'carrier', 'vesselVoyage', 'validFrom', 'validTo', 'remarks'
+    'transitTime', 'cc', 'carrier', 'vesselVoyage', 'validFrom', 'validTo', 'remarks'
   ]
 
   // 生成 HTML 表格（Excel 可以直接打开）
@@ -702,11 +858,21 @@ const loadDropdowns = async () => {
   quoteDestinations.value = dRes.data
 }
 
-onMounted(loadDropdowns)
+onMounted(async () => {
+  await Promise.all([loadDropdowns(), loadQuoteTemplate()])
+})
 </script>
 
 <style scoped>
 .pagination { margin-top:16px; justify-content:flex-end; }
+.template-editor { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.template-hint { margin-bottom: 12px; color: #606266; font-size: 13px; line-height: 1.6; }
+.template-warehouse-tabs { margin-bottom: 14px; }
+.template-item { display: grid; grid-template-columns: auto 118px minmax(0, 1fr) auto auto auto; align-items: center; gap: 8px; }
+.template-item-name { color: #606266; font-size: 13px; }
+.template-preview { margin-top: 16px; border-top: 1px solid #ebeef5; padding-top: 12px; }
+.template-preview-title { color: #606266; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.template-preview pre { max-height: 220px; overflow: auto; margin: 0; padding: 10px; background: #f8fafc; color: #303133; font: 12px/1.6 monospace; white-space: pre-wrap; }
 
 @media (max-width: 768px) {
   :deep(.el-form--inline) {

@@ -32,6 +32,10 @@ public class Announcement {
 
     private Long publishedBy;
 
+    /** 发布人名称，不映射数据库列 */
+    @TableField(exist = false)
+    private String publisherName;
+
     @TableLogic
     private Integer deleted;
 

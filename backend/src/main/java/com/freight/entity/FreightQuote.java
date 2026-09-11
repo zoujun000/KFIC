@@ -6,6 +6,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @TableName("freight_quote")
@@ -25,19 +26,25 @@ public class FreightQuote {
     private String ofWuchong;
     private String wuchongFirstLeg;
     private String wuchongMotherVessel;
-    private String ofBeisha;
-    private String beishaFirstLeg;
-    private String beishaMotherVessel;
     private String ofJiaoxin;
     private String jiaoxinFirstLeg;
     private String jiaoxinMotherVessel;
     private String transitTime;
+    private String cc;
     private String carrier;
     private String vesselVoyage;
     private String remarks;
     private String portCode;
     private LocalDate validFrom;
     private LocalDate validTo;
+
+    /** 查询时按目的港动态附加的未来船期，不落库。 */
+    @TableField(exist = false)
+    private List<FreightVesselSchedule> upcomingSchedules;
+
+    /** 便于列表和复制报价直接使用的格式化船期文本，不落库。 */
+    @TableField(exist = false)
+    private String upcomingScheduleText;
 
     @TableLogic
     private Integer deleted;

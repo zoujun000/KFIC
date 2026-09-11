@@ -188,6 +188,10 @@
               <el-icon size="18"><Search /></el-icon>
               <span>海关出口税查询</span>
             </a>
+            <a href="https://www.hsbianma.com/" target="_blank" class="link-item">
+              <el-icon size="18"><Search /></el-icon>
+              <span>HS编码查询</span>
+            </a>
           </div>
         </el-card>
       </el-col>

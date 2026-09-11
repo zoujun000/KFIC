@@ -9,6 +9,9 @@
     </div>
 
     <el-card v-loading="loading" class="announcement-list" shadow="never">
+      <div class="announcement-toolbar">
+        <el-input v-model="titleKeyword" clearable :prefix-icon="Search" placeholder="搜索公告标题" />
+      </div>
       <template v-if="announcements.length">
         <article v-for="item in announcements" :key="item.id" class="announcement-item">
           <div class="announcement-main">
@@ -27,7 +30,10 @@
                 <el-button link type="primary" :icon="Download" @click="downloadAttachment(item.id, name)">下载</el-button>
               </div>
             </div>
-            <p class="announcement-time">发布时间：{{ formatDate(item.createTime) }}</p>
+            <p class="announcement-time">
+              发布时间：{{ formatDate(item.createTime) }}
+              <span class="announcement-publisher">发布人：{{ item.publisherName || '未知用户' }}</span>
+            </p>
           </div>
           <div v-if="userStore.isManager" class="announcement-actions">
             <el-button link type="primary" :icon="EditPen" @click="openEdit(item)">编辑</el-button>
@@ -89,7 +95,8 @@
       class="announcement-preview-dialog" @closed="cleanupPreview">
       <div v-loading="previewLoading" element-loading-text="正在加载预览…" class="preview-body">
         <el-image v-if="previewMode === 'image' && previewSrc" :src="previewSrc" fit="contain" class="image-preview" />
-        <iframe v-else-if="['pdf', 'doc'].includes(previewMode) && previewSrc" :src="previewSrc" :title="previewTitle" sandbox />
+        <iframe v-else-if="previewMode === 'pdf' && previewSrc" :src="previewSrc" :title="previewTitle" />
+        <iframe v-else-if="previewMode === 'doc' && previewSrc" :src="previewSrc" :title="previewTitle" sandbox />
         <VueOfficeDocx v-else-if="previewMode === 'docx' && previewSrc" :src="previewSrc"
           @rendered="previewLoading = false" @error="handlePreviewError" />
         <template v-else-if="previewMode === 'excel'">
@@ -122,11 +129,12 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, onMounted } from 'vue'
+import { computed, reactive, ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Bell, Delete, Download, EditPen, Paperclip, Plus, Upload, View } from '@element-plus/icons-vue'
+import { Bell, Delete, Download, EditPen, Paperclip, Plus, Search, Upload, View } from '@element-plus/icons-vue'
 import { announcementApi } from '@/api'
 import { useUserStore } from '@/store/user'
+import { useDebounce } from '@/composables/useDebounce'
 import VueOfficeDocx from '@vue-office/docx'
 import '@vue-office/docx/lib/index.css'
 import * as XLSX from 'xlsx'
@@ -139,6 +147,8 @@ const loading = ref(false)
 const total = ref(0)
 const pageNum = ref(1)
 const pageSize = 10
+const titleKeyword = ref('')
+const debouncedTitleKeyword = useDebounce(titleKeyword, 300)
 const dialogVisible = ref(false)
 const saving = ref(false)
 const editingId = ref(null)
@@ -166,13 +176,18 @@ const rules = {
 const loadData = async () => {
   loading.value = true
   try {
-    const res = await announcementApi.page({ pageNum: pageNum.value, pageSize })
+    const res = await announcementApi.page({ pageNum: pageNum.value, pageSize, title: debouncedTitleKeyword.value.trim() })
     announcements.value = res.data.records || []
     total.value = Number(res.data.total || 0)
   } finally {
     loading.value = false
   }
 }
+
+watch(debouncedTitleKeyword, () => {
+  pageNum.value = 1
+  loadData()
+})
 
 const openCreate = () => {
   dialogVisible.value = true
@@ -331,6 +346,7 @@ onMounted(loadData)
 .page-heading h2 { margin: 0; font-size: 20px; color: var(--text-primary); font-weight: 600; }
 .page-heading p { margin: 6px 0 0; font-size: 13px; color: var(--text-muted); }
 .announcement-list { border-radius: 8px; }
+.announcement-toolbar { max-width: 320px; margin-bottom: 4px; }
 .announcement-item { display: flex; gap: 18px; padding: 20px 4px; border-bottom: 1px solid var(--border-light); }
 .announcement-item:last-of-type { border-bottom: 0; }
 .announcement-main { min-width: 0; flex: 1; }
@@ -339,6 +355,7 @@ onMounted(loadData)
 .announcement-title-row h3 { margin: 0; color: var(--text-primary); font-size: 16px; font-weight: 600; }
 .announcement-content { margin: 12px 0; color: var(--text-regular); font-size: 14px; line-height: 1.75; white-space: pre-wrap; word-break: break-word; }
 .announcement-time { margin: 12px 0 0; font-size: 12px; color: var(--text-muted); }
+.announcement-publisher { margin-left: 16px; }
 .attachment-list { display: flex; flex-direction: column; gap: 6px; }
 .attachment-row { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .attachment { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; padding: 5px 8px; color: var(--color-primary); background: #ecf5ff; border: 0; border-radius: 4px; cursor: pointer; font-size: 13px; }
@@ -352,6 +369,7 @@ onMounted(loadData)
 .pagination { display: flex; justify-content: flex-end; padding-top: 16px; }
 @media (max-width: 768px) {
   .page-heading { align-items: center; }
+  .announcement-toolbar { max-width: none; }
   .announcement-item { padding: 16px 0; gap: 8px; }
   .announcement-actions { flex-direction: column; gap: 0; }
   .file-field { display: block; }

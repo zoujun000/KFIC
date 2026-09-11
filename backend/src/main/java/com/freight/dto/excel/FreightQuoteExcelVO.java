@@ -41,18 +41,6 @@ public class FreightQuoteExcelVO {
     @ColumnWidth(10)
     private String wuchongMotherVessel;
 
-    @ExcelProperty("北沙OF")
-    @ColumnWidth(10)
-    private String ofBeisha;
-
-    @ExcelProperty("北沙头程")
-    @ColumnWidth(10)
-    private String beishaFirstLeg;
-
-    @ExcelProperty("北沙大船")
-    @ColumnWidth(10)
-    private String beishaMotherVessel;
-
     @ExcelProperty("滘心OF")
     @ColumnWidth(10)
     private String ofJiaoxin;
@@ -68,6 +56,10 @@ public class FreightQuoteExcelVO {
     @ExcelProperty("时效")
     @ColumnWidth(10)
     private String transitTime;
+
+    @ExcelProperty("CC")
+    @ColumnWidth(10)
+    private String cc;
 
     @ExcelProperty("船公司")
     @ColumnWidth(18)

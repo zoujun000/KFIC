@@ -217,7 +217,7 @@
           </el-col>
           <el-col :span="24">
             <el-form-item label="备注">
-              <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="备注信息" />
+              <el-input v-model="form.remark" type="textarea" :autosize="{ minRows: 2, maxRows: 8 }" placeholder="备注信息" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -225,13 +225,14 @@
 
       <!-- 附件上传（仅编辑时显示） -->
       <div v-if="isEdit && form.id" style="margin-top:16px">
-        <el-divider content-position="left">📎 附件</el-divider>
+        <el-divider content-position="left">📎 附件（点击文件名可预览/下载）</el-divider>
         <div v-if="attachments.length > 0" style="margin-bottom:8px">
           <el-tag
             v-for="f in attachments" :key="f"
             size="small"
             style="margin-right:6px;margin-bottom:4px;cursor:pointer"
-            @dblclick="previewAttachment(f)"
+            title="点击预览/下载"
+            @click="previewAttachment(f)"
           >
             {{ f }}
           </el-tag>
@@ -545,7 +546,8 @@ const rules = {
   cargoWeight: [{ validator: numberValidator('重量'), trigger: 'blur' }],
   chargeableWeight: [{ validator: numberValidator('收费重'), trigger: 'blur' }],
   cargoVolume: [{ validator: numberValidator('体积'), trigger: 'blur' }],
-  totalAmount: [{ validator: numberValidator('金额'), trigger: 'blur' }]
+  totalAmount: [{ validator: numberValidator('金额'), trigger: 'blur' }],
+  packageCount: [{ validator: positiveIntegerValidator('件数'), trigger: 'blur' }]
 }
 
 // 数字校验：允许留空，但填了就必须是非负数字，避免提交到后端报 400
@@ -554,6 +556,16 @@ function numberValidator(label) {
     if (value === '' || value === null || value === undefined) return callback()
     const s = String(value).trim()
     if (!/^\d*\.?\d+$/.test(s)) return callback(new Error(`${label}须为数字`))
+    callback()
+  }
+}
+
+// 件数校验：允许留空，填了必须是正整数（后端为 Integer，小数会 400）
+function positiveIntegerValidator(label) {
+  return (rule, value, callback) => {
+    if (value === '' || value === null || value === undefined) return callback()
+    const s = String(value).trim()
+    if (!/^[1-9]\d*$/.test(s)) return callback(new Error(`${label}须为正整数`))
     callback()
   }
 }
@@ -576,14 +588,19 @@ const uploadHeaders = computed(() => ({
   Authorization: 'Bearer ' + localStorage.getItem('accessToken')
 }))
 
+// 列表与导出共用的查询参数拼装（statuses 多选转逗号分隔、ETD 区间转起止）
+const buildQueryParams = (overrides = {}) => {
+  const params = { ...query, ...overrides }
+  params.etdStart = etdRange.value?.[0] || null
+  params.etdEnd = etdRange.value?.[1] || null
+  params.statuses = Array.isArray(params.statuses) && params.statuses.length > 0 ? params.statuses.join(',') : ''
+  return params
+}
+
 const loadData = async () => {
   loading.value = true
   try {
-    const params = { ...query }
-    params.etdStart = etdRange.value?.[0] || null
-    params.etdEnd = etdRange.value?.[1] || null
-    params.statuses = Array.isArray(params.statuses) && params.statuses.length > 0 ? params.statuses.join(',') : ''
-    const res = await orderApi.page(params)
+    const res = await orderApi.page(buildQueryParams())
     tableData.value = res.data.records
     total.value = res.data.total
   } finally {
@@ -594,22 +611,19 @@ const loadData = async () => {
 const exportOrders = async () => {
   exporting.value = true
   try {
-    const exportQuery = { ...query, pageNum: 1, pageSize: 10000 }
-    exportQuery.etdStart = etdRange.value?.[0] || null
-    exportQuery.etdEnd = etdRange.value?.[1] || null
-    exportQuery.statuses = Array.isArray(exportQuery.statuses) ? exportQuery.statuses.join(',') : ''
-    const res = await orderApi.page(exportQuery)
+    const res = await orderApi.page(buildQueryParams({ pageNum: 1, pageSize: 10000 }))
     const rows = res.data.records
     if (!rows.length) { ElMessage.warning('没有数据可导出'); return }
 
-    const headers = ['SO号', '运输方式', '贸易方式', '起运港', '目的港', '货物名称', '件数', '重量(kg)', '收费重(kg)', '体积(CBM)', '船名航次', 'ETD', 'ETA', '状态', '总金额', '备注', '创建时间']
-    const keys = ['orderSo', 'shipType', 'tradeTerms', 'origin', 'destination', 'cargoName', 'packageCount', 'cargoWeight', 'chargeableWeight', 'cargoVolume', 'vesselVoyage', 'etd', 'eta', 'status', 'totalAmount', 'remark', 'createTime']
+    const headers = ['SO号', '客户', '运输方式', '贸易方式', '起运港', '目的港', '货物名称', '件数', '重量(kg)', '收费重(kg)', '体积(CBM)', '船名航次', 'ETD', 'ETA', '状态', '总金额', '备注', '创建时间']
+    const keys = ['orderSo', 'customerName', 'shipType', 'tradeTerms', 'origin', 'destination', 'cargoName', 'packageCount', 'cargoWeight', 'chargeableWeight', 'cargoVolume', 'vesselVoyage', 'etd', 'eta', 'status', 'totalAmount', 'remark', 'createTime']
     const shipMap = { SEA: '海运', AIR: '空运', LAND: '陆运' }
 
     const csvRows = [headers.join(',')]
     for (const row of rows) {
       csvRows.push(keys.map(k => {
         let v = row[k] ?? ''
+        if (k === 'customerName') v = customerNameOf(row.customerId)
         if (k === 'shipType') v = shipMap[v] || v
         // CSV 转义
         v = String(v).replace(/"/g, '""')
@@ -647,33 +661,79 @@ const onCustomerChange = (customerId) => {
   form.remark = customer?.remark || ''
 }
 
-// 每次打开弹窗都拉一次最新客户，避免新建的客户不出现在下拉里
-const loadCustomers = async () => {
+let customersLoadedAt = 0
+// 客户列表缓存 60 秒，避免每次打开弹窗都全量拉取；新建订单时强制刷新，保证刚建的客户可选
+const loadCustomers = async (force = false) => {
+  if (!force && customers.value.length && Date.now() - customersLoadedAt < 60_000) return
   try {
     const res = await customerApi.page({ pageSize: 999 })
     customers.value = res.data.records
+    customersLoadedAt = Date.now()
   } catch { /* 加载失败保留旧列表 */ }
+}
+
+// 客户数超过下拉分页上限时，确保当前订单的客户在选项里（否则 el-select 会直接显示 ID）
+const ensureCustomerLoaded = async (customerId) => {
+  if (!customerId || customers.value.some(c => c.id === customerId)) return
+  try {
+    const res = await customerApi.getById(customerId)
+    if (res?.data) customers.value.unshift(res.data)
+  } catch { /* 客户不存在或已删除时保持现状 */ }
 }
 
 const openDialog = async (row = null) => {
   isEdit.value = !!row
-  await loadCustomers()
+  await loadCustomers(!isEdit.value)
+  await ensureCustomerLoaded(row?.customerId)
   Object.assign(form, row ? formatRow(row) : emptyForm())
   uploadFiles.value = []
   attachments.value = []
   dialogVisible.value = true
+  // 表单实例被复用，清除上一次残留的校验提示
+  nextTick(() => formRef.value?.clearValidate())
   if (row) loadAttachments()
 }
+
+// 仅提交后端 DTO 定义的字段，避免携带表格行展开的 status/createTime 等冗余字段
+const buildOrderPayload = () => ({
+  id: form.id,
+  customerId: form.customerId,
+  orderSo: form.orderSo,
+  tradeTerms: form.tradeTerms,
+  shipType: form.shipType,
+  origin: form.origin,
+  destination: form.destination,
+  cargoName: form.cargoName,
+  cargoWeight: form.cargoWeight,
+  chargeableWeight: form.chargeableWeight,
+  cargoVolume: form.cargoVolume,
+  packageCount: form.packageCount,
+  vesselVoyage: form.vesselVoyage,
+  shippingCompany: form.shippingCompany,
+  containerSeal: form.containerSeal,
+  etd: form.etd,
+  eta: form.eta,
+  totalAmount: form.totalAmount,
+  remark: form.remark
+})
 
 const handleSave = async () => {
   await formRef.value.validate()
   saving.value = true
   try {
-    if (isEdit.value) await orderApi.update(form)
-    else await orderApi.create(form)
-    ElMessage.success('保存成功')
-    dialogVisible.value = false
-    loadData()
+    if (isEdit.value) {
+      await orderApi.update(buildOrderPayload())
+      ElMessage.success('保存成功')
+      dialogVisible.value = false
+      loadData()
+    } else {
+      const res = await orderApi.create(buildOrderPayload())
+      ElMessage.success('保存成功')
+      dialogVisible.value = false
+      loadData()
+      // 新建成功后直接打开详情抽屉，便于立即上传附件
+      if (res?.data?.id) showOrderDetail(res.data)
+    }
   } finally {
     saving.value = false
   }
@@ -745,21 +805,24 @@ const editCurrentOrder = () => {
   }
 }
 
-const previewDetailAttachment = async (filename) => {
-  if (!currentOrder.value?.id) return
+// 编辑弹窗与详情抽屉共用的附件预览入口：Excel/Word 走页内预览，其余文件下载后新窗口打开
+const previewOrderAttachment = async (orderId, filename) => {
+  if (!orderId) return
   if (isExcelFile(filename)) {
-    openExcelPreview(currentOrder.value.id, filename)
+    openExcelPreview(orderId, filename)
   } else if (isWordFile(filename)) {
-    openWordPreview(currentOrder.value.id, filename)
+    openWordPreview(orderId, filename)
   } else {
     try {
-      const blob = await orderApi.downloadAttachment(currentOrder.value.id, filename)
+      const blob = await orderApi.downloadAttachment(orderId, filename)
       const url = URL.createObjectURL(blob)
       window.open(url, '_blank')
       setTimeout(() => URL.revokeObjectURL(url), 60000)
     } catch { ElMessage.error('预览失败') }
   }
 }
+
+const previewDetailAttachment = (filename) => previewOrderAttachment(currentOrder.value?.id, filename)
 
 const loadAttachments = async () => {
   if (!form.id) return
@@ -870,20 +933,7 @@ const doUpload = async () => {
   finally { uploading.value = false }
 }
 
-const previewAttachment = async (filename) => {
-  if (isExcelFile(filename)) {
-    openExcelPreview(form.id, filename)
-  } else if (isWordFile(filename)) {
-    openWordPreview(form.id, filename)
-  } else {
-    try {
-      const blob = await orderApi.downloadAttachment(form.id, filename)
-      const url = URL.createObjectURL(blob)
-      window.open(url, '_blank')
-      setTimeout(() => URL.revokeObjectURL(url), 60000)
-    } catch { ElMessage.error('预览失败') }
-  }
-}
+const previewAttachment = (filename) => previewOrderAttachment(form.id, filename)
 
 onMounted(() => { loadData(); loadCustomers() })
 </script>

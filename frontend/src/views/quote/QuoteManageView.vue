@@ -46,13 +46,11 @@
       <el-table-column label="乌冲OF" width="90" align="right">
         <template #default="{ row }">{{ row.ofWuchong || '—' }}</template>
       </el-table-column>
-      <el-table-column label="北沙OF" width="90" align="right">
-        <template #default="{ row }">{{ row.ofBeisha || '—' }}</template>
-      </el-table-column>
       <el-table-column label="滘心OF" width="90" align="right">
         <template #default="{ row }">{{ row.ofJiaoxin || '—' }}</template>
       </el-table-column>
       <el-table-column prop="transitTime" label="时效" width="70" />
+      <el-table-column prop="cc" label="CC" width="70" />
       <el-table-column prop="carrier" label="船公司" width="100" show-overflow-tooltip />
       <el-table-column prop="vesselVoyage" label="船名航次" width="120" show-overflow-tooltip />
       <el-table-column label="有效期" width="150">
@@ -110,6 +108,11 @@
             </el-form-item>
           </el-col>
           <el-col :span="8">
+            <el-form-item label="CC">
+              <el-input v-model="editForm.cc" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
             <el-form-item label="船公司">
               <el-input v-model="editForm.carrier" />
             </el-form-item>
@@ -133,24 +136,6 @@
           <el-col :span="8">
             <el-form-item label="大船">
               <el-input v-model="editForm.wuchongMotherVessel" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-divider content-position="left">北沙仓库</el-divider>
-        <el-row :gutter="16">
-          <el-col :span="8">
-            <el-form-item label="OF">
-              <el-input v-model="editForm.ofBeisha" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="头程">
-              <el-input v-model="editForm.beishaFirstLeg" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="大船">
-              <el-input v-model="editForm.beishaMotherVessel" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -220,9 +205,8 @@ const isAdd = ref(false)
 const editForm = reactive({
   country: '', destination: '', volumeRange: '', via: '',
   ofWuchong: '', wuchongFirstLeg: '', wuchongMotherVessel: '',
-  ofBeisha: '', beishaFirstLeg: '', beishaMotherVessel: '',
   ofJiaoxin: '', jiaoxinFirstLeg: '', jiaoxinMotherVessel: '',
-  transitTime: '', carrier: '', vesselVoyage: '', remarks: '',
+  transitTime: '', cc: '', carrier: '', vesselVoyage: '', remarks: '',
   validFrom: '', validTo: ''
 })
 
@@ -268,9 +252,8 @@ const openAdd = () => {
     destination: selectedDest.value || '',
     volumeRange: '', via: '',
     ofWuchong: '', wuchongFirstLeg: '', wuchongMotherVessel: '',
-    ofBeisha: '', beishaFirstLeg: '', beishaMotherVessel: '',
     ofJiaoxin: '', jiaoxinFirstLeg: '', jiaoxinMotherVessel: '',
-    transitTime: '', carrier: '', vesselVoyage: '', remarks: '',
+    transitTime: '', cc: '', carrier: '', vesselVoyage: '', remarks: '',
     validFrom: '', validTo: ''
   })
   editVisible.value = true
@@ -288,13 +271,11 @@ const openEdit = (row) => {
     ofWuchong: row.ofWuchong || '',
     wuchongFirstLeg: row.wuchongFirstLeg || '',
     wuchongMotherVessel: row.wuchongMotherVessel || '',
-    ofBeisha: row.ofBeisha || '',
-    beishaFirstLeg: row.beishaFirstLeg || '',
-    beishaMotherVessel: row.beishaMotherVessel || '',
     ofJiaoxin: row.ofJiaoxin || '',
     jiaoxinFirstLeg: row.jiaoxinFirstLeg || '',
     jiaoxinMotherVessel: row.jiaoxinMotherVessel || '',
     transitTime: row.transitTime || '',
+    cc: row.cc || '',
     carrier: row.carrier || '',
     vesselVoyage: row.vesselVoyage || '',
     remarks: row.remarks || '',
@@ -364,16 +345,14 @@ const generateExcel = (rows, subtitle) => {
   const headers = [
     '国家', '目的港', '代码', '体积区间', '中转',
     '乌冲OF', '乌冲头程', '乌冲大船',
-    '北沙OF', '北沙头程', '北沙大船',
     '滘心OF', '滘心头程', '滘心大船',
-    '时效', '船公司', '船名航次', '有效期从', '有效期至', '备注'
+    '时效', 'CC', '船公司', '船名航次', '有效期从', '有效期至', '备注'
   ]
   const fields = [
     'country', 'destination', 'portCode', 'volumeRange', 'via',
     'ofWuchong', 'wuchongFirstLeg', 'wuchongMotherVessel',
-    'ofBeisha', 'beishaFirstLeg', 'beishaMotherVessel',
     'ofJiaoxin', 'jiaoxinFirstLeg', 'jiaoxinMotherVessel',
-    'transitTime', 'carrier', 'vesselVoyage', 'validFrom', 'validTo', 'remarks'
+    'transitTime', 'cc', 'carrier', 'vesselVoyage', 'validFrom', 'validTo', 'remarks'
   ]
 
   let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">'

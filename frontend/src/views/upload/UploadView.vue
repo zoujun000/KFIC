@@ -52,6 +52,33 @@
           </el-button>
         </el-card>
       </el-col>
+      <el-col :span="12">
+        <el-card>
+          <template #header>
+            <div style="display:flex;align-items:center;gap:8px">
+              <el-icon size="20" color="#e6a23c"><Ship /></el-icon>
+              <span style="font-weight:600">上传大船船期表</span>
+            </div>
+          </template>
+          <el-upload ref="uploadScheduleRef" drag :auto-upload="false" accept=".xlsx,.xls"
+            :limit="1" :on-change="f => scheduleFile = f.raw"
+            :on-exceed="() => ElMessage.warning('每次只能上传1个文件')">
+            <el-icon size="36" color="#c0c4cc"><Upload /></el-icon>
+            <div style="color:#606266;margin-top:6px">拖拽或点击上传 <em>.xlsx</em></div>
+          </el-upload>
+          <div v-if="scheduleLog" class="log-badge">
+            <el-tag type="success">新增 {{ scheduleLog.inserted }}</el-tag>
+            <el-tag type="warning">更新 {{ scheduleLog.updated }}</el-tag>
+            <el-tag>未变 {{ scheduleLog.unchanged }}</el-tag>
+            <el-tag v-if="scheduleLog.removed" type="info">下线 {{ scheduleLog.removed }}</el-tag>
+            <el-tag v-if="scheduleLog.skipped" type="danger">跳过 {{ scheduleLog.skipped }}</el-tag>
+          </div>
+          <el-button type="warning" :loading="uploadingSchedule" :disabled="!scheduleFile"
+            style="margin-top:12px;width:100%" @click="doUploadSchedule">
+            解析大船船期入库
+          </el-button>
+        </el-card>
+      </el-col>
     </el-row>
   </div>
 </template>
@@ -60,18 +87,22 @@
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Upload, Ship } from '@element-plus/icons-vue'
-import { quoteApi, portChargeApi } from '@/api'
+import { quoteApi, portChargeApi, vesselScheduleApi } from '@/api'
 
 defineOptions({ name: 'Upload' })
 
 const uploadQuoteRef = ref()
 const uploadPortRef = ref()
+const uploadScheduleRef = ref()
 const quoteFile = ref(null)
 const portFile = ref(null)
+const scheduleFile = ref(null)
 const uploadingQuote = ref(false)
 const uploadingPort = ref(false)
+const uploadingSchedule = ref(false)
 const quoteLog = ref(null)
 const portLog = ref(null)
+const scheduleLog = ref(null)
 
 const doUploadQuote = async () => {
   if (!quoteFile.value) return
@@ -95,6 +126,18 @@ const doUploadPort = async () => {
     ElMessage.success(`目的港费用：新增${res.data.inserted} 更新${res.data.updated}`)
     uploadPortRef.value?.clearFiles(); portFile.value = null
   } finally { uploadingPort.value = false }
+}
+
+const doUploadSchedule = async () => {
+  if (!scheduleFile.value) return
+  uploadingSchedule.value = true
+  const fd = new FormData(); fd.append('file', scheduleFile.value)
+  try {
+    const res = await vesselScheduleApi.upload(fd)
+    scheduleLog.value = res.data
+    ElMessage.success(`大船船期：新增${res.data.inserted} 更新${res.data.updated} 未变${res.data.unchanged}`)
+    uploadScheduleRef.value?.clearFiles(); scheduleFile.value = null
+  } finally { uploadingSchedule.value = false }
 }
 </script>
 

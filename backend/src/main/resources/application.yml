@@ -54,5 +54,11 @@ springdoc:
     path: /v3/api-docs
 
 aisstream:
+  # 是否启用 AISStream 实时连接；当前本地限流冷却中先停用，恢复时改为 true 或设环境变量 AISSTREAM_ENABLED=true
+  enabled: ${AISSTREAM_ENABLED:false}
   # AISStream 实时 AIS 数据流 API Key（可用环境变量 AISSTREAM_API_KEY 覆盖）
-  api-key: ${AISSTREAM_API_KEY:164be3ed8c714b98254949236ec9784297206866}
+  api-key: ${AISSTREAM_API_KEY:}
+
+shipxy:
+  # ShipXY 船舶搜索与单船位置查询密钥，仅从环境变量读取
+  api-key: ${SHIPXY_API_KEY:}

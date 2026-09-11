@@ -51,9 +51,8 @@ public class FreightOrderController {
 
     @Operation(summary = "新建订单")
     @PostMapping
-    public Result<Void> create(@Valid @RequestBody FreightOrderDTO dto) {
-        orderService.create(dto);
-        return Result.success();
+    public Result<FreightOrder> create(@Valid @RequestBody FreightOrderDTO dto) {
+        return Result.success(orderService.create(dto));
     }
 
     @Operation(summary = "修改订单")

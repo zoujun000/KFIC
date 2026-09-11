@@ -45,8 +45,9 @@ public class AnnouncementController {
     @Operation(summary = "分页查询公告")
     @GetMapping
     public Result<IPage<Announcement>> page(@RequestParam(defaultValue = "1") Integer pageNum,
-                                             @RequestParam(defaultValue = "10") Integer pageSize) {
-        return Result.success(announcementService.page(pageNum, pageSize));
+                                             @RequestParam(defaultValue = "10") Integer pageSize,
+                                             @RequestParam(required = false) String title) {
+        return Result.success(announcementService.page(pageNum, pageSize, title));
     }
 
     @Operation(summary = "新建公告")

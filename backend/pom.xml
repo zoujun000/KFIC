@@ -21,7 +21,7 @@
         <java.version>25</java.version>
         <mybatis-plus.version>3.5.7</mybatis-plus.version>
         <jjwt.version>0.11.5</jjwt.version>
-        <springdoc.version>2.0.4</springdoc.version>
+        <springdoc.version>2.8.17</springdoc.version>
 
     </properties>
 
@@ -38,6 +38,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- 开发期热重启（生产打包时不参与运行） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <optional>true</optional>
         </dependency>
 
         <!-- MyBatis-Plus -->

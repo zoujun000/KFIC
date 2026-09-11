@@ -20,11 +20,14 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.lang.reflect.Field;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -93,6 +96,40 @@ class FreightOrderServiceImplSecurityTest {
     }
 
     @Test
+    void createOrderRequiresExistingCustomer() {
+        FreightOrderDTO dto = new FreightOrderDTO();
+        dto.setCustomerId(99L);
+        when(customerMapper.selectById(99L)).thenReturn(null);
+        SecurityUtil.setCurrentUserId(1L);
+
+        assertThatThrownBy(() -> service.create(dto))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("客户不存在");
+        verify(orderMapper, never()).insert(any(FreightOrder.class));
+    }
+
+    @Test
+    void updateOrderAllowsMissingCustomer() {
+        // 客户可能已被删除，历史订单仍需可编辑，因此修改订单不校验客户存在性
+        FreightOrder existing = new FreightOrder();
+        existing.setCreatedBy(1L);
+        existing.setCustomerId(99L);
+        existing.setOrderNo("NO-1");
+        when(orderMapper.selectById(1L)).thenReturn(existing);
+        when(customerMapper.selectById(99L)).thenReturn(null);
+        when(orderMapper.update(any(FreightOrder.class), any())).thenReturn(1);
+        SecurityUtil.setCurrentUserId(1L);
+
+        FreightOrderDTO dto = new FreightOrderDTO();
+        dto.setId(1L);
+        dto.setCustomerId(99L);
+
+        service.update(dto);
+
+        verify(orderMapper).update(any(FreightOrder.class), any());
+    }
+
+    @Test
     void deletingOrderKeepsAttachmentsForLogicalDeletion() {
         FreightOrder order = new FreightOrder();
         order.setCreatedBy(1L);
@@ -104,5 +141,14 @@ class FreightOrderServiceImplSecurityTest {
 
         verify(orderMapper).deleteById(1L);
         verifyNoInteractions(customerMapper, attachmentPathService);
+    }
+
+    @Test
+    void updatesOrdersThatHaveReachedEta() {
+        when(orderMapper.update(isNull(), any())).thenReturn(2);
+
+        assertThat(service.updateStatusesByEta(LocalDate.of(2026, 9, 7))).isEqualTo(2);
+
+        verify(orderMapper).update(isNull(), any());
     }
 }

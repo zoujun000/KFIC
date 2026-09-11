@@ -12,7 +12,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.stereotype.Service;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -36,7 +35,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
-@Service
 @RequiredArgsConstructor
 public class AisStreamServiceImpl implements AisStreamService, WebSocket.Listener {
 
@@ -86,6 +84,9 @@ public class AisStreamServiceImpl implements AisStreamService, WebSocket.Listene
     @Value("${aisstream.api-key}")
     private String apiKey;
 
+    @Value("${aisstream.enabled:true}")
+    private boolean enabled;
+
     private final Map<String, ShipData> ships = new ConcurrentHashMap<>();
     private final Map<String, Set<String>> nameIndex = new ConcurrentHashMap<>();
     private final Map<String, TrackData> tracks = new ConcurrentHashMap<>();
@@ -105,6 +106,10 @@ public class AisStreamServiceImpl implements AisStreamService, WebSocket.Listene
 
     @EventListener(ApplicationReadyEvent.class)
     public void start() {
+        if (!enabled) {
+            log.info("AISStream 已通过配置禁用，不建立连接");
+            return;
+        }
         scheduler.execute(this::connect);
     }
 
@@ -200,6 +205,9 @@ public class AisStreamServiceImpl implements AisStreamService, WebSocket.Listene
     }
 
     private void scheduleReconnect() {
+        if (!enabled) {
+            return;
+        }
         if (!reconnectScheduled.compareAndSet(false, true)) {
             return;
         }

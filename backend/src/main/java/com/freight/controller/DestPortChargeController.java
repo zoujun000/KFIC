@@ -33,7 +33,7 @@ public class DestPortChargeController {
 
     @Operation(summary = "上传目的港费用Excel")
     @PostMapping("/upload")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MAINTAINER')")
     public Result<PortChargeUploadLog> upload(@RequestParam("file") MultipartFile file) {
         return Result.success(chargeService.uploadAndParse(file));
     }

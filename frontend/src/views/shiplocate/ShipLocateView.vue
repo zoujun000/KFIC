@@ -38,15 +38,24 @@
             </template>
           </el-select>
           <el-button type="primary" :icon="Position" @click="locateInput">定位</el-button>
-          <el-button v-if="selectedMmsi" :icon="Aim" @click="fitTrack">居中</el-button>
+          <el-button v-if="latest" :icon="Aim" @click="fitTrack">居中</el-button>
         </div>
         <div class="status-box">
-          <el-tag :type="streamConnected ? 'success' : 'danger'" size="small" effect="light">
-            {{ streamConnected ? 'AIS 已连接' : 'AIS 未连接' }}
-          </el-tag>
-          <span class="status-text">已收录船舶 {{ trackedShips }}</span>
-          <span v-if="lastMessageText" class="status-text">最后消息 {{ lastMessageText }}</span>
+          <el-tag type="info" size="small" effect="light">ShipXY 船位查询</el-tag>
+          <span class="status-text">选择船舶后显示最近一次 AIS 位置</span>
         </div>
+      </div>
+      <div v-if="recentShips.length" class="recent-searches">
+        <span class="recent-label">最近定位</span>
+        <el-tag
+          v-for="item in recentShips"
+          :key="item.mmsi"
+          class="recent-ship"
+          effect="plain"
+          closable
+          @click="locateRecentShip(item)"
+          @close="removeRecentShip(item.mmsi)"
+        >{{ item.name }} · {{ item.mmsi }}</el-tag>
       </div>
     </el-card>
 
@@ -57,7 +66,7 @@
           <div class="card-header">
             <span>船舶信息</span>
             <el-tag v-if="shipInfo" size="small" type="info" effect="plain">
-              {{ trackPoints }} 个轨迹点
+              查询结果
             </el-tag>
           </div>
         </template>
@@ -103,6 +112,33 @@
             </div>
           </div>
           <el-empty v-else description="暂无实时位置" :image-size="60" />
+          <el-divider />
+          <div class="port-calls-header">
+            <span>近 7 天挂靠记录</span>
+            <el-button
+              size="small"
+              :loading="portCallsLoading"
+              @click="loadPortCalls"
+            >加载</el-button>
+          </div>
+          <template v-if="portCallsLoaded">
+            <el-timeline v-if="portCalls.length" class="port-calls">
+              <el-timeline-item
+                v-for="(call, index) in portCalls"
+                :key="`${call.portCode}-${call.ata}-${index}`"
+                :timestamp="call.ata || call.arrivalAnchorage || '时间未知'"
+                placement="top"
+              >
+                <div class="port-name">{{ call.portName || '未知港口' }}</div>
+                <div class="port-meta">{{ [call.countryName, call.portCode].filter(Boolean).join(' · ') || '—' }}</div>
+                <div v-if="call.terminalName || call.berthName" class="port-meta">
+                  {{ [call.terminalName, call.berthName].filter(Boolean).join(' · ') }}
+                </div>
+                <div class="port-meta">离港 {{ call.atd || '—' }}{{ formatStayTime(call.stayTime) }}</div>
+              </el-timeline-item>
+            </el-timeline>
+            <el-empty v-else description="近 7 天无挂靠记录" :image-size="52" />
+          </template>
         </template>
         <el-empty v-else description="请先搜索并选择船舶" :image-size="80" />
       </el-card>
@@ -112,7 +148,7 @@
         <div ref="mapEl" class="map-container"></div>
         <div v-if="!selectedMmsi" class="map-placeholder">
           <el-icon :size="42"><Ship /></el-icon>
-          <p>输入船名或 MMSI，点击「定位」查看实时位置与累计轨迹</p>
+          <p>输入船名或 MMSI，选择船舶后查看当前位置</p>
         </div>
       </el-card>
     </div>
@@ -120,7 +156,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { Aim, Position } from '@element-plus/icons-vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -135,31 +171,52 @@ const searchResults = ref([])
 const searchLoading = ref(false)
 const shipInfo = ref(null)
 const latest = ref(null)
-const track = ref([])
-const streamConnected = ref(false)
-const trackedShips = ref(0)
-const lastMessageAt = ref(0)
+const portCalls = ref([])
+const portCallsLoading = ref(false)
+const portCallsLoaded = ref(false)
+const RECENT_SHIPS_KEY = 'ship-locate-recent-ships'
+const recentShips = ref(loadRecentShips())
 
 let map = null
-let trackLayer = null
 let marker = null
-let fitDone = false
-let pollTimer = null
-let statusTimer = null
-
-const trackPoints = computed(() => track.value.length)
-const lastMessageText = computed(() => {
-  if (!lastMessageAt.value) return ''
-  const diff = Math.max(0, Math.floor((Date.now() - lastMessageAt.value) / 1000))
-  if (diff < 60) return diff + ' 秒前'
-  if (diff < 3600) return Math.floor(diff / 60) + ' 分钟前'
-  return Math.floor(diff / 3600) + ' 小时前'
-})
 
 const optionLabel = (item) => {
   let label = `${item.name || '未知船名'}（MMSI ${item.mmsi}`
   if (item.imo) label += ` · IMO ${item.imo}`
   return label + '）'
+}
+
+function loadRecentShips() {
+  try {
+    const value = JSON.parse(localStorage.getItem(RECENT_SHIPS_KEY) || '[]')
+    return Array.isArray(value) ? value.filter(item => /^\d{9}$/.test(item?.mmsi)).slice(0, 8) : []
+  } catch {
+    return []
+  }
+}
+
+const saveRecentShips = () => {
+  localStorage.setItem(RECENT_SHIPS_KEY, JSON.stringify(recentShips.value))
+}
+
+const addRecentShip = (ship, mmsi) => {
+  const item = {
+    mmsi: ship?.mmsi || mmsi,
+    name: ship?.name || `MMSI ${mmsi}`
+  }
+  recentShips.value = [item, ...recentShips.value.filter(record => record.mmsi !== item.mmsi)].slice(0, 8)
+  saveRecentShips()
+}
+
+const locateRecentShip = (item) => {
+  selectedMmsi.value = item.mmsi
+  searchKeyword.value = item.mmsi
+  selectShip(item.mmsi)
+}
+
+const removeRecentShip = (mmsi) => {
+  recentShips.value = recentShips.value.filter(item => item.mmsi !== mmsi)
+  saveRecentShips()
 }
 
 const formatSize = (length, breadth) => {
@@ -181,6 +238,11 @@ const formatTime = (time) => {
   const d = new Date(time)
   const pad = (n) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+const formatStayTime = (hours) => {
+  if (hours == null) return ''
+  return ` · 停留 ${Number(hours).toFixed(1)} 小时`
 }
 
 const navStatusText = (status) => {
@@ -222,17 +284,33 @@ const locateInput = () => {
 }
 
 const selectShip = async (mmsi) => {
-  fitDone = false
   try {
     const res = await shipLocateApi.locate(mmsi)
     const data = res.data
     if (!data) return
     shipInfo.value = data.ship || null
     latest.value = data.latest || null
-    track.value = data.track || []
+    portCalls.value = []
+    portCallsLoaded.value = false
+    addRecentShip(data.ship, mmsi)
     drawShip()
   } catch {
     // 错误提示已由请求拦截器统一处理
+  }
+}
+
+const loadPortCalls = async () => {
+  if (!selectedMmsi.value) return
+  portCallsLoading.value = true
+  try {
+    const res = await shipLocateApi.portCalls(selectedMmsi.value)
+    portCalls.value = res.data || []
+    portCallsLoaded.value = true
+  } catch {
+    portCalls.value = []
+    portCallsLoaded.value = false
+  } finally {
+    portCallsLoading.value = false
   }
 }
 
@@ -240,15 +318,12 @@ const clearShip = () => {
   selectedMmsi.value = ''
   shipInfo.value = null
   latest.value = null
-  track.value = []
+  portCalls.value = []
+  portCallsLoaded.value = false
   clearMap()
 }
 
 const clearMap = () => {
-  if (trackLayer) {
-    trackLayer.remove()
-    trackLayer = null
-  }
   if (marker) {
     marker.remove()
     marker = null
@@ -266,37 +341,23 @@ const initMap = () => {
 
 const drawShip = () => {
   if (!map) return
-  const points = track.value
-    .filter(p => p.lat != null && p.lon != null)
-    .map(p => [p.lat, p.lon])
-
-  if (trackLayer) {
-    trackLayer.remove()
-    trackLayer = null
-  }
-  if (points.length >= 2) {
-    trackLayer = L.polyline(points, { color: '#1677ff', weight: 3, opacity: 0.8 }).addTo(map)
-  }
-
   if (latest.value && latest.value.lat != null && latest.value.lon != null) {
     const latlng = [latest.value.lat, latest.value.lon]
+    const heading = Number(latest.value.heading ?? latest.value.cog)
+    const rotation = Number.isFinite(heading) ? heading : 0
     if (!marker) {
       const icon = L.divIcon({
         className: 'ship-marker',
-        html: '<div class="ship-marker-dot"></div>',
-        iconSize: [14, 14],
-        iconAnchor: [7, 7]
+        html: `<span class="ship-marker-icon" style="transform:rotate(${rotation}deg)">&#9650;</span>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
       })
       marker = L.marker(latlng, { icon, zIndexOffset: 1000 }).addTo(map)
     } else {
       marker.setLatLng(latlng)
     }
     marker.setPopupContent(popupHtml())
-  }
-
-  if (!fitDone && points.length) {
-    map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 11 })
-    fitDone = true
+    map.setView(latlng, 8)
   }
 }
 
@@ -319,47 +380,17 @@ const popupHtml = () => {
 }
 
 const fitTrack = () => {
-  fitDone = false
-  drawShip()
-}
-
-const loadShip = async () => {
-  if (!selectedMmsi.value || document.hidden) return
-  try {
-    const res = await shipLocateApi.locate(selectedMmsi.value)
-    const data = res.data
-    if (!data) return
-    shipInfo.value = data.ship || shipInfo.value
-    latest.value = data.latest || null
-    track.value = data.track || []
-    drawShip()
-  } catch {
-    // 轮询失败静默，等待下次
-  }
-}
-
-const loadStatus = async () => {
-  try {
-    const res = await shipLocateApi.status()
-    streamConnected.value = !!res.data?.connected
-    trackedShips.value = res.data?.trackedShips || 0
-    lastMessageAt.value = res.data?.lastMessageAt || 0
-  } catch {
-    // 静默
+  if (latest.value?.lat != null && latest.value?.lon != null && map) {
+    map.setView([latest.value.lat, latest.value.lon], Math.max(map.getZoom(), 8))
   }
 }
 
 onMounted(async () => {
   await nextTick()
   initMap()
-  loadStatus()
-  pollTimer = setInterval(loadShip, 5000)
-  statusTimer = setInterval(loadStatus, 10000)
 })
 
 onUnmounted(() => {
-  clearInterval(pollTimer)
-  clearInterval(statusTimer)
   if (map) {
     map.remove()
     map = null
@@ -410,6 +441,25 @@ onUnmounted(() => {
   color: #909399;
 }
 
+.recent-searches {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f2f5;
+  flex-wrap: wrap;
+}
+
+.recent-label {
+  font-size: 12px;
+  color: #86909c;
+}
+
+.recent-ship {
+  cursor: pointer;
+}
+
 .content {
   flex: 1;
   display: flex;
@@ -451,6 +501,32 @@ onUnmounted(() => {
 
 .latest-row .label {
   color: #86909c;
+}
+
+.port-calls-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.port-calls {
+  margin: 14px 0 0;
+  padding-left: 4px;
+}
+
+.port-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1d2129;
+}
+
+.port-meta {
+  margin-top: 3px;
+  font-size: 12px;
+  color: #86909c;
+  line-height: 18px;
 }
 
 .map-card {
@@ -517,13 +593,13 @@ onUnmounted(() => {
   border: none;
 }
 
-.map-card :deep(.ship-marker-dot) {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #f56c6c;
-  border: 3px solid #fff;
-  box-shadow: 0 0 8px rgba(245, 108, 108, 0.9);
+.map-card :deep(.ship-marker-icon) {
+  display: block;
+  color: #2563eb;
+  font-size: 26px;
+  line-height: 28px;
+  text-align: center;
+  text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
 }
 
 @media (max-width: 900px) {

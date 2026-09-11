@@ -52,6 +52,16 @@ export const quoteApi = {
   delete: (id) => request.delete(`/quotes/${id}`),
   logs: () => request.get('/quotes/logs')
 }
+export const vesselScheduleApi = {
+  upload: (formData) => request.post('/vessel-schedules/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  logs: () => request.get('/vessel-schedules/logs')
+}
+export const quoteTemplateApi = {
+  get: () => request.get('/quote-template'),
+  save: (template) => request.put('/quote-template', { template })
+}
 export const destChargeApi = {
   upload: (formData) => request.post('/dest-charges/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
@@ -61,10 +71,11 @@ export const destChargeApi = {
   logs: () => request.get('/dest-charges/logs')
 }
 
-// 船舶定位（AISStream）
+// 船舶定位（ShipXY）
 export const shipLocateApi = {
   search: (keyword) => request.get('/ship-locate/search', { params: { keyword } }),
   locate: (mmsi) => request.get(`/ship-locate/${mmsi}`),
+  portCalls: (mmsi, days = 7) => request.get(`/ship-locate/${mmsi}/port-calls`, { params: { days } }),
   status: () => request.get('/ship-locate/status')
 }
 

@@ -1,0 +1,10 @@
+-- 当前用户的复制报价文本模版，一位用户仅保留一份。
+USE KFIC;
+
+CREATE TABLE IF NOT EXISTS quote_template (
+    user_id BIGINT NOT NULL,
+    template TEXT NOT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户个性化报价模版';

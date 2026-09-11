@@ -1,16 +1,20 @@
 package com.freight.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.freight.common.exception.BusinessException;
 import com.freight.dto.QuoteQueryDTO;
 import com.freight.entity.FreightQuote;
 import com.freight.entity.QuoteUploadLog;
+import com.freight.entity.FreightVesselSchedule;
 import com.freight.mapper.FreightQuoteMapper;
 import com.freight.mapper.QuoteUploadLogMapper;
 import com.freight.service.QuoteService;
+import com.freight.service.VesselScheduleService;
 import com.freight.util.QuoteExcelParser;
+import com.freight.util.VesselScheduleExcelParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +34,7 @@ public class QuoteServiceImpl implements QuoteService {
 
     private final FreightQuoteMapper quoteMapper;
     private final QuoteUploadLogMapper uploadLogMapper;
+    private final VesselScheduleService vesselScheduleService;
 
     @Override
     @Transactional
@@ -52,9 +57,12 @@ public class QuoteServiceImpl implements QuoteService {
             throw new BusinessException("未解析到任何报价数据，请检查文件格式");
         }
 
-        // 查出数据库中已有记录（同有效期内的）
+        // 只匹配相同有效期，避免历史报价影响本次导入
         List<FreightQuote> existing = quoteMapper.selectList(
-            new LambdaQueryWrapper<FreightQuote>().eq(FreightQuote::getDeleted, 0)
+            new LambdaQueryWrapper<FreightQuote>()
+                .eq(FreightQuote::getDeleted, 0)
+                .eq(FreightQuote::getValidFrom, validFrom)
+                .eq(FreightQuote::getValidTo, validTo)
         );
 
         // 建立唯一key → 已有记录的 Map
@@ -66,9 +74,15 @@ public class QuoteServiceImpl implements QuoteService {
                 (a, b) -> a  // 有重复取第一个
             ));
 
+        // 同一批次的重复行只处理一次，避免合并单元格辅助行重复更新同一记录
+        Map<String, FreightQuote> parsedMap = new LinkedHashMap<>();
+        for (FreightQuote q : parsed) {
+            parsedMap.putIfAbsent(buildKey(q), q);
+        }
+
         int inserted = 0, updated = 0, unchanged = 0;
 
-        for (FreightQuote q : parsed) {
+        for (FreightQuote q : parsedMap.values()) {
             String key = buildKey(q);
             FreightQuote old = existingMap.get(key);
 
@@ -79,7 +93,7 @@ public class QuoteServiceImpl implements QuoteService {
             } else if (isDifferent(old, q)) {
                 // 有变化，更新
                 q.setId(old.getId());
-                quoteMapper.updateById(q);
+                updateImportedQuote(q);
                 updated++;
             } else {
                 // 无变化
@@ -130,7 +144,9 @@ public class QuoteServiceImpl implements QuoteService {
          .orderByAsc(FreightQuote::getDestination)
          .orderByAsc(FreightQuote::getVolumeMin);
 
-        return quoteMapper.selectPage(new Page<>(dto.getPageNum(), dto.getPageSize()), w);
+        IPage<FreightQuote> page = quoteMapper.selectPage(new Page<>(dto.getPageNum(), dto.getPageSize()), w);
+        enrichUpcomingSchedules(page.getRecords());
+        return page;
     }
 
     @Override
@@ -140,8 +156,8 @@ public class QuoteServiceImpl implements QuoteService {
                 .select(FreightQuote::getCountry)
                 .eq(FreightQuote::getDeleted, 0)
                 .isNotNull(FreightQuote::getCountry)
-                .groupBy(FreightQuote::getCountry)
-                .orderByAsc(FreightQuote::getCountry)
+                // 按报价记录进入数据库的顺序展示国家，避免下拉框重新按名称排序
+                .orderByAsc(FreightQuote::getId)
         ).stream().map(FreightQuote::getCountry)
          .filter(StringUtils::hasText)
          .distinct()
@@ -184,7 +200,9 @@ public class QuoteServiceImpl implements QuoteService {
             .eq(FreightQuote::getPortCode, portCode.trim().toUpperCase())
             .orderByAsc(FreightQuote::getVolumeMin)
             .orderByAsc(FreightQuote::getVia);
-        return quoteMapper.selectList(w);
+        List<FreightQuote> rows = quoteMapper.selectList(w);
+        enrichUpcomingSchedules(rows);
+        return rows;
     }
 
     @Override
@@ -195,7 +213,9 @@ public class QuoteServiceImpl implements QuoteService {
             .like(FreightQuote::getDestination, destination)
             .orderByAsc(FreightQuote::getVolumeMin)
             .orderByAsc(FreightQuote::getVia);
-        return quoteMapper.selectList(w);
+        List<FreightQuote> rows = quoteMapper.selectList(w);
+        enrichUpcomingSchedules(rows);
+        return rows;
     }
 
     @Override
@@ -231,19 +251,51 @@ public class QuoteServiceImpl implements QuoteService {
     private static String buildKey(FreightQuote q) {
         return String.join("||",
             nullStr(q.getSourceSheet()),
+            nullStr(q.getCountry()),
             nullStr(q.getDestination()),
             nullStr(q.getVolumeRange()),
-            nullStr(q.getVia())
+            nullStr(q.getVia()),
+            q.getValidFrom() == null ? "" : q.getValidFrom().toString(),
+            q.getValidTo() == null ? "" : q.getValidTo().toString()
         );
+    }
+
+    /** 导入是完整快照，必须允许 Excel 空值覆盖数据库旧值。 */
+    private void updateImportedQuote(FreightQuote q) {
+        UpdateWrapper<FreightQuote> update = new UpdateWrapper<FreightQuote>()
+            .eq("id", q.getId())
+            .eq("deleted", 0)
+            .set("source_sheet", q.getSourceSheet())
+            .set("country", q.getCountry())
+            .set("destination", q.getDestination())
+            .set("volume_range", q.getVolumeRange())
+            .set("volume_min", q.getVolumeMin())
+            .set("volume_max", q.getVolumeMax())
+            .set("via", q.getVia())
+            .set("min_charge", q.getMinCharge())
+            .set("of_wuchong", q.getOfWuchong())
+            .set("wuchong_first_leg", q.getWuchongFirstLeg())
+            .set("wuchong_mother_vessel", q.getWuchongMotherVessel())
+            .set("of_jiaoxin", q.getOfJiaoxin())
+            .set("jiaoxin_first_leg", q.getJiaoxinFirstLeg())
+            .set("jiaoxin_mother_vessel", q.getJiaoxinMotherVessel())
+            .set("transit_time", q.getTransitTime())
+            .set("cc", q.getCc())
+            .set("carrier", q.getCarrier())
+            .set("remarks", q.getRemarks())
+            .set("port_code", q.getPortCode())
+            .set("valid_from", q.getValidFrom())
+            .set("valid_to", q.getValidTo());
+        quoteMapper.update(null, update);
     }
 
     // 判断两条记录是否有实质性变化
     private boolean isDifferent(FreightQuote old, FreightQuote neo) {
         return !Objects.equals(old.getOfWuchong(), neo.getOfWuchong())
-            || !Objects.equals(old.getOfBeisha(), neo.getOfBeisha())
             || !Objects.equals(old.getOfJiaoxin(), neo.getOfJiaoxin())
             || !Objects.equals(old.getMinCharge(), neo.getMinCharge())
             || !Objects.equals(old.getTransitTime(), neo.getTransitTime())
+            || !Objects.equals(old.getCc(), neo.getCc())
             || !Objects.equals(old.getCarrier(), neo.getCarrier())
             || !Objects.equals(old.getValidFrom(), neo.getValidFrom())
             || !Objects.equals(old.getValidTo(), neo.getValidTo());
@@ -251,5 +303,31 @@ public class QuoteServiceImpl implements QuoteService {
 
     private static String nullStr(String s) {
         return s == null ? "" : s;
+    }
+
+    private void enrichUpcomingSchedules(List<FreightQuote> quotes) {
+        if (quotes == null || quotes.isEmpty()) return;
+        Map<String, List<FreightVesselSchedule>> byCode = vesselScheduleService
+            .listUpcomingByPortCodes(quotes.stream().map(this::quotePortCode).toList(), 5)
+            .stream().collect(Collectors.groupingBy(FreightVesselSchedule::getPortCode));
+        for (FreightQuote quote : quotes) {
+            String code = VesselScheduleExcelParser.canonicalPortCode(quotePortCode(quote));
+            List<FreightVesselSchedule> schedules = byCode.getOrDefault(code, List.of());
+            quote.setUpcomingSchedules(schedules);
+            quote.setUpcomingScheduleText(schedules.stream()
+                .map(this::formatSchedule)
+                .collect(Collectors.joining("、")));
+        }
+    }
+
+    private String quotePortCode(FreightQuote quote) {
+        if (StringUtils.hasText(quote.getPortCode())) return quote.getPortCode();
+        return QuoteExcelParser.resolvePortCode(quote.getDestination());
+    }
+
+    private String formatSchedule(FreightVesselSchedule schedule) {
+        String vessel = schedule.getVesselVoyage();
+        if (schedule.getEtd() == null) return vessel;
+        return vessel + "（ETD " + schedule.getEtd() + "）";
     }
 }

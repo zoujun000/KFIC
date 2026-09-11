@@ -5,7 +5,9 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.freight.common.exception.BusinessException;
 import com.freight.entity.Announcement;
+import com.freight.entity.SysUser;
 import com.freight.mapper.AnnouncementMapper;
+import com.freight.mapper.SysUserMapper;
 import com.freight.service.AnnouncementService;
 import com.freight.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
@@ -29,12 +31,18 @@ public class AnnouncementServiceImpl implements AnnouncementService {
 
     private static final Path ATTACHMENT_DIR = Paths.get("/Users/zoujun/Desktop/公告");
     private final AnnouncementMapper announcementMapper;
+    private final SysUserMapper sysUserMapper;
 
     @Override
-    public IPage<Announcement> page(Integer pageNum, Integer pageSize) {
+    public IPage<Announcement> page(Integer pageNum, Integer pageSize, String title) {
         IPage<Announcement> page = announcementMapper.selectPage(new Page<>(pageNum, pageSize),
-                new LambdaQueryWrapper<Announcement>().orderByDesc(Announcement::getCreateTime));
-        page.getRecords().forEach(announcement -> announcement.setAttachments(listAttachmentNames(announcement)));
+                new LambdaQueryWrapper<Announcement>()
+                        .like(StringUtils.hasText(title), Announcement::getTitle, title)
+                        .orderByDesc(Announcement::getCreateTime));
+        page.getRecords().forEach(announcement -> {
+            announcement.setAttachments(listAttachmentNames(announcement));
+            announcement.setPublisherName(resolvePublisherName(announcement.getPublishedBy()));
+        });
         return page;
     }
 
@@ -42,6 +50,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
     public Announcement getById(Long id) {
         Announcement announcement = announcementMapper.selectById(id);
         if (announcement == null) throw new BusinessException("公告不存在");
+        announcement.setPublisherName(resolvePublisherName(announcement.getPublishedBy()));
         return announcement;
     }
 
@@ -190,6 +199,14 @@ public class AnnouncementServiceImpl implements AnnouncementService {
         if (!StringUtils.hasText(announcement.getTitle())) throw new BusinessException("公告标题不能为空");
         if (announcement.getTitle().trim().length() > 100) throw new BusinessException("公告标题不能超过100个字符");
         if (!StringUtils.hasText(announcement.getContent())) throw new BusinessException("公告内容不能为空");
+    }
+
+    private String resolvePublisherName(Long userId) {
+        if (userId == null) return "未知用户";
+        SysUser user = sysUserMapper.selectById(userId);
+        if (user == null) return "未知用户";
+        if (StringUtils.hasText(user.getRealName())) return user.getRealName();
+        return StringUtils.hasText(user.getUsername()) ? user.getUsername() : "未知用户";
     }
 
     private String cleanFileName(String filename) {

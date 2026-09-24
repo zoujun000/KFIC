@@ -32,6 +32,11 @@ TokRepo.lock
 # Backup files
 *.bak*
 
+# Local project instructions, database migrations, and work logs
+AGENTS.md
+sql/
+worklog-vault/
+
 # Obsidian workspace state
 worklog-vault/.obsidian/workspace.json
 worklog-vault/.obsidian/workspace-mobile.json

@@ -22,7 +22,7 @@ public class FreightOrderDTO {
     private Long customerId;
 
     @NotBlank(message = "运输方式不能为空")
-    @Pattern(regexp = "SEA|AIR|LAND", message = "运输方式必须为 SEA/AIR/LAND")
+    @Pattern(regexp = "SEA|AIR|LAND|EXPRESS", message = "运输方式必须为 SEA/AIR/LAND/EXPRESS")
     private String shipType;
 
     @Size(max = 20, message = "贸易方式长度不能超过20")

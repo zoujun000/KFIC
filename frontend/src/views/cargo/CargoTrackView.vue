@@ -223,6 +223,8 @@ const expressPatterns = [
   { test: (value) => /^SF/i.test(value), code: 'sfb2c' },
   { test: (value) => /^EMS/i.test(value), code: 'china-ems' },
   { test: (value) => /^DHL/i.test(value), code: 'dhl' },
+  // DHL Freight 运单常见为 9 位数字且以 6 开头，维运网会误判为 TNT
+  { test: (value) => /^6\d{8}$/.test(value), code: 'dhl' },
   { test: (value) => /^TNT/i.test(value), code: 'tnt' },
   { test: (value) => /^1Z/i.test(value), code: 'ups' },
   { test: (value) => /^4PX/i.test(value), code: '4px' },

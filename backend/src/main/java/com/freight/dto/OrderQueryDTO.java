@@ -18,6 +18,10 @@ public class OrderQueryDTO {
     private LocalDate etdStart;
     /** ETD 结束日期 */
     private LocalDate etdEnd;
+    /** 订单创建时间起始日期（包含当天） */
+    private LocalDate createTimeStart;
+    /** 订单创建时间结束日期（包含当天） */
+    private LocalDate createTimeEnd;
     private Integer pageNum = 1;
     private Integer pageSize = 10;
 }

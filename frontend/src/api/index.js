@@ -62,6 +62,12 @@ export const quoteTemplateApi = {
   get: () => request.get('/quote-template'),
   save: (template) => request.put('/quote-template', { template })
 }
+export const expressQuoteApi = {
+  products: (businessBigType) => request.get('/express-quotes/products', {
+    params: businessBigType ? { businessBigType } : {}
+  }),
+  query: (data) => request.post('/express-quotes/query', data)
+}
 export const destChargeApi = {
   upload: (formData) => request.post('/dest-charges/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }

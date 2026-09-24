@@ -212,8 +212,8 @@ defineOptions({ name: 'Dashboard' })
 const loading = ref(false)
 const recentOrders = ref([])
 
-const shipLabel = { SEA: '海运', AIR: '空运', LAND: '陆运' }
-const shipTag = { SEA: 'primary', AIR: 'success', LAND: 'warning' }
+const shipLabel = { SEA: '海运', AIR: '空运', LAND: '陆运', EXPRESS: '国际快递' }
+const shipTag = { SEA: 'primary', AIR: 'success', LAND: 'warning', EXPRESS: 'danger' }
 const statusLabel = { '进仓': '进仓', '走船': '走船', '已到港': '已到港', '已提货': '已提货' }
 const statusTag = { '进仓': 'info', '走船': 'warning', '已到港': 'primary', '已提货': 'success' }
 

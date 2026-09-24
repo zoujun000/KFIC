@@ -15,6 +15,7 @@
           <el-option label="海运" value="SEA" />
           <el-option label="空运" value="AIR" />
           <el-option label="陆运" value="LAND" />
+          <el-option label="国际快递" value="EXPRESS" />
         </el-select>
       </el-form-item>
       <el-form-item label="状态">
@@ -24,6 +25,11 @@
       </el-form-item>
       <el-form-item label="ETD">
         <el-date-picker v-model="etdRange" type="daterange" range-separator="至"
+          start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD"
+          :shortcuts="dateShortcuts" style="width:260px" />
+      </el-form-item>
+      <el-form-item label="订单创建时间">
+        <el-date-picker v-model="createTimeRange" type="daterange" range-separator="至"
           start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD"
           :shortcuts="dateShortcuts" style="width:260px" />
       </el-form-item>
@@ -134,6 +140,7 @@
                 <el-option label="海运" value="SEA" />
                 <el-option label="空运" value="AIR" />
                 <el-option label="陆运" value="LAND" />
+                <el-option label="国际快递" value="EXPRESS" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -502,9 +509,9 @@ const attachLoading = ref(false)
 
 const statusLabel = { '订舱': '订舱', '进仓': '进仓', '走船': '走船', '已到港': '已到港', '已提货': '已提货' }
 const statusTag = { '订舱': '', '进仓': 'info', '走船': 'warning', '已到港': 'primary', '已提货': 'success' }
-const shipTypeLabel = { SEA: '海运', AIR: '空运', LAND: '陆运' }
-const shipTypeTag = { SEA: 'primary', AIR: 'success', LAND: 'warning' }
-const shipTypeIcon = { SEA: '🚢', AIR: '✈️', LAND: '🚛' }
+const shipTypeLabel = { SEA: '海运', AIR: '空运', LAND: '陆运', EXPRESS: '国际快递' }
+const shipTypeTag = { SEA: 'primary', AIR: 'success', LAND: 'warning', EXPRESS: 'danger' }
+const shipTypeIcon = { SEA: '🚢', AIR: '✈️', LAND: '🚛', EXPRESS: '📦' }
 const shipmentSteps = [
   { key: '订舱', label: '订舱', note: '舱位确认' },
   { key: '进仓', label: '进仓', note: '货物入仓' },
@@ -518,6 +525,7 @@ const currentStatusIndex = computed(() => {
 })
 
 const etdRange = ref([])
+const createTimeRange = ref([])
 const dateShortcuts = [
   { text: '本月', value: () => { const d = new Date(); return [new Date(d.getFullYear(), d.getMonth(), 1), new Date(d.getFullYear(), d.getMonth() + 1, 0)] } },
   { text: '上月', value: () => { const d = new Date(); return [new Date(d.getFullYear(), d.getMonth() - 1, 1), new Date(d.getFullYear(), d.getMonth(), 0)] } },
@@ -593,6 +601,8 @@ const buildQueryParams = (overrides = {}) => {
   const params = { ...query, ...overrides }
   params.etdStart = etdRange.value?.[0] || null
   params.etdEnd = etdRange.value?.[1] || null
+  params.createTimeStart = createTimeRange.value?.[0] || null
+  params.createTimeEnd = createTimeRange.value?.[1] || null
   params.statuses = Array.isArray(params.statuses) && params.statuses.length > 0 ? params.statuses.join(',') : ''
   return params
 }
@@ -617,7 +627,7 @@ const exportOrders = async () => {
 
     const headers = ['SO号', '客户', '运输方式', '贸易方式', '起运港', '目的港', '货物名称', '件数', '重量(kg)', '收费重(kg)', '体积(CBM)', '船名航次', 'ETD', 'ETA', '状态', '总金额', '备注', '创建时间']
     const keys = ['orderSo', 'customerName', 'shipType', 'tradeTerms', 'origin', 'destination', 'cargoName', 'packageCount', 'cargoWeight', 'chargeableWeight', 'cargoVolume', 'vesselVoyage', 'etd', 'eta', 'status', 'totalAmount', 'remark', 'createTime']
-    const shipMap = { SEA: '海运', AIR: '空运', LAND: '陆运' }
+    const shipMap = { SEA: '海运', AIR: '空运', LAND: '陆运', EXPRESS: '国际快递' }
 
     const csvRows = [headers.join(',')]
     for (const row of rows) {
@@ -648,6 +658,7 @@ const exportOrders = async () => {
 
 const resetQuery = () => {
   etdRange.value = []
+  createTimeRange.value = []
   Object.assign(query, { orderSo: '', customerId: null, shipType: '', statuses: [], pageNum: 1 })
   loadData()
 }
@@ -699,7 +710,7 @@ const buildOrderPayload = () => ({
   id: form.id,
   customerId: form.customerId,
   orderSo: form.orderSo,
-  tradeTerms: form.tradeTerms,
+  tradeTerms: form.tradeTerms || '',
   shipType: form.shipType,
   origin: form.origin,
   destination: form.destination,
@@ -958,6 +969,7 @@ onMounted(() => { loadData(); loadCustomers() })
 .dossier-hero { position: relative; overflow: hidden; padding: 28px 30px 24px; color: #f8fcfc; background: #164d58; }
 .dossier-hero.transport-AIR { background: #245e81; }
 .dossier-hero.transport-LAND { background: #6a542d; }
+.dossier-hero.transport-EXPRESS { background: #75406f; }
 .hero-grid { position: absolute; inset: 0; opacity: .3; background-image: repeating-linear-gradient(90deg, transparent 0 29px, rgba(255,255,255,.1) 29px 30px), repeating-linear-gradient(0deg, transparent 0 29px, rgba(255,255,255,.1) 29px 30px); background-size: 30px 30px; }
 .hero-topline, .hero-title-row, .hero-route, .hero-meta { position: relative; }
 .hero-topline, .hero-title-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }

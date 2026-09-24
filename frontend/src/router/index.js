@@ -57,6 +57,12 @@ const routes = [
         meta: { title: '费用报价', icon: 'PriceTag' }
       },
       {
+        path: 'tianfuxing-quotes',
+        name: 'TianfuxingQuotes',
+        component: () => import('@/views/quote/TianfuxingQuoteView.vue'),
+        meta: { title: '天富行快递报价', icon: 'Van' }
+      },
+      {
         path: 'ship-locate',
         name: 'ShipLocate',
         component: () => import('@/views/shiplocate/ShipLocateView.vue'),

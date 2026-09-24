@@ -158,6 +158,7 @@ const menuItems = computed(() => {
     { path: '/orders', title: '订单管理', icon: 'Document' },
     { path: '/cargo-track', title: '货物跟踪', icon: 'Box' },
     { path: '/quotes', title: '费用报价', icon: 'Goods' },
+    { path: '/tianfuxing-quotes', title: '天富行快递报价', icon: 'Van' },
     { path: '/ship-locate', title: '船舶定位', icon: 'Ship' },
     { path: '/quote-manage', title: '报价费用管理', icon: 'EditPen', require: 'manager' },
     { path: '/port-charge-manage', title: '目的港费用管理', icon: 'EditPen', require: 'manager' },

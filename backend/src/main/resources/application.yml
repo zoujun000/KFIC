@@ -62,3 +62,9 @@ aisstream:
 shipxy:
   # ShipXY 船舶搜索与单船位置查询密钥，仅从环境变量读取
   api-key: ${SHIPXY_API_KEY:}
+
+intelink:
+  # 天富行 OIS 接口配置。生产环境建议通过环境变量覆盖，密钥不会下发到前端。
+  base-url: ${INTELINK_BASE_URL:https://openapi.intelink.net.cn}
+  app-key: ${INTELINK_APP_KEY:GZWH1694_10346}
+  app-secret: ${INTELINK_APP_SECRET:}

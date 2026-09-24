@@ -55,7 +55,11 @@ public class FreightOrderServiceImpl implements FreightOrderService {
                 .eq(StringUtils.hasText(query.getShipType()), FreightOrder::getShipType, query.getShipType())
                 .eq(StringUtils.hasText(query.getStatus()), FreightOrder::getStatus, query.getStatus())
                 .ge(query.getEtdStart() != null, FreightOrder::getEtd, query.getEtdStart())
-                .le(query.getEtdEnd() != null, FreightOrder::getEtd, query.getEtdEnd());
+                .le(query.getEtdEnd() != null, FreightOrder::getEtd, query.getEtdEnd())
+                .ge(query.getCreateTimeStart() != null, FreightOrder::getCreateTime,
+                        query.getCreateTimeStart() == null ? null : query.getCreateTimeStart().atStartOfDay())
+                .lt(query.getCreateTimeEnd() != null, FreightOrder::getCreateTime,
+                        query.getCreateTimeEnd() == null ? null : query.getCreateTimeEnd().plusDays(1).atStartOfDay());
 
         String statuses = query.getStatuses();
         if (StringUtils.hasText(statuses)) {
@@ -107,6 +111,8 @@ public class FreightOrderServiceImpl implements FreightOrderService {
 
         FreightOrder order = new FreightOrder();
         BeanUtils.copyProperties(dto, order, "createdBy");
+        // 贸易方式允许清空；空值转换为空字符串，配合默认非空更新策略写回数据库
+        if (dto.getTradeTerms() == null) order.setTradeTerms("");
 
         LambdaUpdateWrapper<FreightOrder> wrapper = new LambdaUpdateWrapper<FreightOrder>()
                 .eq(FreightOrder::getId, dto.getId());

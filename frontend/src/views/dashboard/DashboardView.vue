@@ -192,6 +192,10 @@
               <el-icon size="18"><Search /></el-icon>
               <span>HS编码查询</span>
             </a>
+            <a href="https://www.somsds.com/" target="_blank" rel="noopener noreferrer" class="link-item">
+              <el-icon size="18"><Link /></el-icon>
+              <span>SOMSDS</span>
+            </a>
           </div>
         </el-card>
       </el-col>

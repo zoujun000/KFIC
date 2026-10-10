@@ -123,24 +123,31 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="贸易方式">
-              <el-select v-model="form.tradeTerms" placeholder="请选择" clearable style="width:100%">
-                <el-option label="FOB" value="FOB" />
-                <el-option label="CIF" value="CIF" />
-                <el-option label="EXW" value="EXW" />
-                <el-option label="DDP" value="DDP" />
-                <el-option label="DAP" value="DAP" />
-                <el-option label="CFR" value="CFR" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
             <el-form-item label="运输方式" prop="shipType">
-              <el-select v-model="form.shipType" style="width:100%">
+              <el-select v-model="form.shipType" style="width:100%" @change="handleShipTypeChange">
                 <el-option label="海运" value="SEA" />
                 <el-option label="空运" value="AIR" />
                 <el-option label="陆运" value="LAND" />
                 <el-option label="国际快递" value="EXPRESS" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item prop="tradeTerms" :label="form.shipType === 'EXPRESS' ? '快递渠道' : '贸易方式'">
+              <el-select v-model="form.tradeTerms" placeholder="请选择" clearable style="width:100%">
+                <template v-if="form.shipType === 'EXPRESS'">
+                  <el-option label="DHL" value="DHL" />
+                  <el-option label="FedEx" value="FedEx" />
+                  <el-option label="UPS" value="UPS" />
+                </template>
+                <template v-else>
+                  <el-option label="FOB" value="FOB" />
+                  <el-option label="CIF" value="CIF" />
+                  <el-option label="EXW" value="EXW" />
+                  <el-option label="DDP" value="DDP" />
+                  <el-option label="DAP" value="DAP" />
+                  <el-option label="CFR" value="CFR" />
+                </template>
               </el-select>
             </el-form-item>
           </el-col>
@@ -345,7 +352,7 @@
               <div class="schedule-grid">
                 <div class="schedule-cell"><span>ETD · 预计离港</span><strong>{{ currentOrder.etd || '待定' }}</strong></div>
                 <div class="schedule-cell"><span>ETA · 预计到港</span><strong>{{ currentOrder.eta || '待定' }}</strong></div>
-                <div class="schedule-cell"><span>贸易条款</span><strong>{{ currentOrder.tradeTerms || '—' }}</strong></div>
+                <div class="schedule-cell"><span>{{ currentOrder.shipType === 'EXPRESS' ? '快递渠道' : '贸易条款' }}</span><strong>{{ currentOrder.tradeTerms || '—' }}</strong></div>
                 <div class="schedule-cell"><span>订单金额</span><strong class="amount-value">{{ currentOrder.totalAmount ? `¥ ${currentOrder.totalAmount}` : '—' }}</strong></div>
               </div>
             </section>
@@ -544,11 +551,14 @@ const emptyForm = () => ({
   etd: '', eta: '', remark: ''
 })
 const form = reactive(emptyForm())
+const tradeTermOptions = ['FOB', 'CIF', 'EXW', 'DDP', 'DAP', 'CFR']
+const expressChannelOptions = ['DHL', 'FedEx', 'UPS']
 
 const rules = {
   customerId: [{ required: true, message: '请选择客户', trigger: 'change' }],
   orderSo: [{ required: true, message: '请填写SO号', trigger: 'blur' }],
   shipType: [{ required: true, message: '请选择运输方式', trigger: 'change' }],
+  tradeTerms: [{ required: true, message: '请选择贸易方式或快递渠道', trigger: 'change' }],
   origin: [{ required: true, message: '请填写起运港', trigger: 'blur' }],
   destination: [{ required: true, message: '请填写目的港', trigger: 'blur' }],
   cargoWeight: [{ validator: numberValidator('重量'), trigger: 'blur' }],
@@ -576,6 +586,11 @@ function positiveIntegerValidator(label) {
     if (!/^[1-9]\d*$/.test(s)) return callback(new Error(`${label}须为正整数`))
     callback()
   }
+}
+
+const handleShipTypeChange = (shipType) => {
+  const options = shipType === 'EXPRESS' ? expressChannelOptions : tradeTermOptions
+  if (!options.includes(form.tradeTerms)) form.tradeTerms = ''
 }
 
 const formatRow = (row) => ({

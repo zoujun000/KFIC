@@ -111,9 +111,6 @@ public class FreightOrderServiceImpl implements FreightOrderService {
 
         FreightOrder order = new FreightOrder();
         BeanUtils.copyProperties(dto, order, "createdBy");
-        // 贸易方式允许清空；空值转换为空字符串，配合默认非空更新策略写回数据库
-        if (dto.getTradeTerms() == null) order.setTradeTerms("");
-
         LambdaUpdateWrapper<FreightOrder> wrapper = new LambdaUpdateWrapper<FreightOrder>()
                 .eq(FreightOrder::getId, dto.getId());
         if (!SecurityUtil.isAdmin()) {

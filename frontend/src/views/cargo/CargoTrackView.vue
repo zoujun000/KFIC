@@ -30,6 +30,16 @@
           <el-icon :size="16"><component :is="tab.icon" /></el-icon>
           <span>{{ tab.label }}</span>
         </button>
+        <a
+          class="segment external-segment"
+          href="https://app.singlewindow.cn/qspserver/sw/qsp/query/view/export"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="报关通关跟踪"
+        >
+          <el-icon :size="16"><Link /></el-icon>
+          <span>报关通关跟踪</span>
+        </a>
       </div>
 
       <form class="track-form" @submit.prevent="query">
@@ -131,7 +141,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Ship, Promotion, Van, Search, RefreshLeft } from '@element-plus/icons-vue'
+import { Ship, Promotion, Van, Search, RefreshLeft, Link } from '@element-plus/icons-vue'
 import { detectCarrierByNumber, mergeCarrierOptions } from '@/utils/carriers'
 import { weiyunTrackApi } from '@/api/weiyunTrack'
 
@@ -540,7 +550,7 @@ onUnmounted(() => clearTimeout(recognizeTimer))
 .segmented {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   padding: 4px;
   margin-bottom: 26px;
   background: rgba(15, 23, 42, 0.06);
@@ -552,7 +562,7 @@ onUnmounted(() => clearTimeout(recognizeTimer))
   top: 4px;
   bottom: 4px;
   left: 4px;
-  width: calc((100% - 8px) / 3);
+  width: calc((100% - 8px) / 4);
   border-radius: 10px;
   background: #fff;
   box-shadow:
@@ -580,6 +590,13 @@ onUnmounted(() => clearTimeout(recognizeTimer))
   color: #64748b;
   cursor: pointer;
   transition: color 220ms ease, transform 100ms ease-out;
+}
+
+.external-segment {
+  color: #2563eb;
+  text-decoration: none;
+  white-space: normal;
+  line-height: 1.15;
 }
 
 .segment:active {
